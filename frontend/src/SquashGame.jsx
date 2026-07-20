@@ -223,7 +223,7 @@ export default function SquashGameDemo() {
         <SquashGame key={key} onGameOver={handleGameOver} />
       ) : (
         <div style={{ color: '#fff', textAlign: 'center' }}>
-          <h2>Game over</h2>
+          <h2>Game over!</h2>
           <p style={{ fontSize: '20px', color: '#00ffcc' }}>Final score: {finalScore}</p>
           <button
             onClick={restart}
