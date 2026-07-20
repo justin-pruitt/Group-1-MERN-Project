@@ -1,0 +1,30 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DROPLET_HOST }}
+          username: ${{ secrets.DROPLET_USERNAME }}
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            cd ~/Squash
+            git pull origin main
+
+            cd ~/Squash/frontend
+            npm install
+            npm run build
+
+            cd ~/Squash/backend
+            npm install
+
+            pm2 restart squash-backend || pm2 start server.js --name squash-backend
+            pm2 restart squash-frontend || pm2 start "npm run preview -- --host --port 5173" --name squash-frontend
+            pm2 save
