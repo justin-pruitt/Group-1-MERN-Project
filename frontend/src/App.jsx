@@ -1,11 +1,9 @@
-import { useState,useRef } from "react";
+import { useState, useRef } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
 import "./theme.css";
 import "./App.css";
 import { sound } from './sound';
-
-
 
 const MODES = [
   {
@@ -33,11 +31,11 @@ export default function App() {
 
   const ensureSoundsLoaded = async () => {
     if (soundsLoaded.current) return;
-    soundsLoaded.current = true; // set before awaiting so rapid double-clicks don't double-load
+    soundsLoaded.current = true;
     await sound.loadAll({
-      wall: '/Assets/sfx/ball-contact.mp3',
-      paddle: '/Assets/sfx/ball-paddle.mp3',
-      click: '/Assets/sfx/menu-click.mp3',
+      wall: '/sfx/ball-contact.mp3',
+      paddle: '/sfx/ball-paddle.mp3',
+      click: '/sfx/menu-click.mp3',
     });
     sound.setVolume(volume);
   };
@@ -81,9 +79,10 @@ export default function App() {
   if (mode) {
     return (
       <div className="app-shell">
-        <button className="hud-btn back-btn" onClick={() => setMode(goBack)}>
+        <button className="hud-btn back-btn" onClick={goBack}>
           &larr; Modes
         </button>
+        {VolumeSlider}
         {mode === "solo" && <SoloGame />}
         {mode === "vs" && <VsGame />}
       </div>
@@ -102,7 +101,7 @@ export default function App() {
             key={m.id}
             className="mode-card bracket-frame"
             disabled={m.locked}
-            onClick={() => !m.locked && setMode(m.id)}
+            onClick={() => !m.locked && selectMode(m.id)}
           >
             <div className="mode-card-label">{m.label}</div>
             <div className="mode-card-desc">{m.desc}</div>
