@@ -1,0 +1,39 @@
+.vs-shell {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.vs-heading {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.vs-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 32px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.vs-side-a {
+  color: var(--signal-a);
+}
+.vs-side-b {
+  color: var(--signal-b);
+}
+
+.vs-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  background: var(--panel);
+  touch-action: none;
+}

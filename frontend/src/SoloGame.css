@@ -1,0 +1,61 @@
+.solo-shell {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.solo-heading {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.solo-wrap {
+  width: 100%;
+}
+
+.solo-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.solo-stat-cells {
+  color: var(--power);
+}
+
+.solo-stat-total {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--signal-a);
+}
+
+.solo-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  background: var(--panel);
+  touch-action: none;
+}
+
+.solo-gameover {
+  padding: 40px 24px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+}
+
+.solo-final-score {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 48px;
+  color: var(--signal-a);
+  margin: 12px 0 20px;
+  text-shadow: 0 0 20px rgba(63, 224, 208, 0.4);
+}

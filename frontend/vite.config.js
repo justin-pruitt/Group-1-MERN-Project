@@ -5,6 +5,10 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: true,
-    allowedHosts: ['neilpena.xyz']
+    allowedHosts: ['neilpena.xyz'],
+    proxy: {
+      '/api': 'http://localhost:5000',
+      '/socket.io': { target: 'http://localhost:5000', ws: true }
+    }
   }
 })
