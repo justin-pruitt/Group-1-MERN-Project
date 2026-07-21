@@ -12,7 +12,7 @@ const PADDLE_MARGIN = 15;
 const PADDLE_W = 12;
 const PADDLE_H = 80;
 const BALL_R = 8;
-const MAX_BALL_SPEED = 12;
+const MAX_BALL_SPEED = 20;
 const WIN_SCORE = 7;
 const TICK_MS = 20; // 50Hz
 
