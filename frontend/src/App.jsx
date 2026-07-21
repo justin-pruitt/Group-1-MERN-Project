@@ -35,9 +35,9 @@ export default function App() {
     if (soundsLoaded.current) return;
     soundsLoaded.current = true; // set before awaiting so rapid double-clicks don't double-load
     await sound.loadAll({
-      wall: '../Assets/sfx/ball-contact.mp3',
-      paddle: '../Assets/sfx/ball-paddle.mp3',
-      click: '../Assets/sfx/menu-click.mp3',
+      wall: '/Assets/sfx/ball-contact.mp3',
+      paddle: '/Assets/sfx/ball-paddle.mp3',
+      click: '/Assets/sfx/menu-click.mp3',
     });
     sound.setVolume(volume);
   };
