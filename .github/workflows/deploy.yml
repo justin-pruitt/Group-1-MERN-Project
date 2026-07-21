@@ -26,5 +26,4 @@ jobs:
             npm install
 
             pm2 restart squash-backend || pm2 start server.js --name squash-backend
-            pm2 restart squash-frontend || pm2 start "npm run preview -- --host --port 5173" --name squash-frontend
             pm2 save
