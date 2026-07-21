@@ -21,8 +21,12 @@ function Rally({ onGameOver }) {
 
     // Base speed the ball resets to on each life; growth is capped so
     // things never become unplayable.
-    const BASE_SPEED = 1.8;
-    const MAX_SPEED = 9;
+    // Matched to versus mode's real-world speed: PongMatch.js runs its
+    // physics on a 50Hz server tick (launch ~250px/s, cap ~1000px/s),
+    // while this loop is normalized to REFERENCE_FPS=60 below, so the
+    // per-"frame" constants here are those targets divided by 60.
+    const BASE_SPEED = 4.2;
+    const MAX_SPEED = 16.7;
 
     // Launch at a random angle each time so the very first rally isn't
     // always the same predictable path.

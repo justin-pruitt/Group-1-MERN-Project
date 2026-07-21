@@ -16,6 +16,7 @@ export default React.memo(function VsGame() {
   const [phase, setPhase] = useState("idle"); // idle | waiting | playing | ended
   const [side, setSide] = useState(null);
   const [endInfo, setEndInfo] = useState(null);
+  const [score, setScore] = useState({ left: 0, right: 0 });
 
   // connect only while this mode is mounted
   useEffect(() => {
@@ -30,6 +31,7 @@ export default React.memo(function VsGame() {
     const onMatched = ({ side }) => {
       setSide(side);
       setEndInfo(null);
+      setScore({ left: 0, right: 0 });
       setPhase("playing");
     };
     const onState = (state) => {
@@ -63,6 +65,7 @@ export default React.memo(function VsGame() {
     if (phase !== "playing") return;
     const ctx = canvasRef.current.getContext("2d");
     let frameId;
+    let lastDrawnScore = { left: 0, right: 0 };
 
     const draw = () => {
       const state = stateRef.current;
@@ -83,20 +86,31 @@ export default React.memo(function VsGame() {
       ctx.setLineDash([]);
 
       if (state) {
+        // Glowing paddles, matching solo mode's shadowBlur treatment.
         ctx.fillStyle = "#3fe0d0"; // left = signal-a
+        ctx.shadowColor = "#3fe0d0";
+        ctx.shadowBlur = 8;
         ctx.fillRect(PADDLE_MARGIN, state.paddles.left.y, PADDLE_W, PADDLE_H);
+        ctx.shadowBlur = 0;
+
         ctx.fillStyle = "#ff7a45"; // right = signal-b
+        ctx.shadowColor = "#ff7a45";
+        ctx.shadowBlur = 8;
         ctx.fillRect(WIDTH - PADDLE_MARGIN - PADDLE_W, state.paddles.right.y, PADDLE_W, PADDLE_H);
+        ctx.shadowBlur = 0;
 
         ctx.fillStyle = "#e8edf7";
         ctx.beginPath();
         ctx.arc(state.ball.x, state.ball.y, BALL_R, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.font = "bold 28px ui-monospace, monospace";
-        ctx.textAlign = "center";
-        ctx.fillStyle = "#6b7694";
-        ctx.fillText(`${state.score.left}   ${state.score.right}`, WIDTH / 2, 40);
+        if (
+          state.score.left !== lastDrawnScore.left ||
+          state.score.right !== lastDrawnScore.right
+        ) {
+          lastDrawnScore = state.score;
+          setScore(state.score);
+        }
       }
 
       frameId = requestAnimationFrame(draw);
@@ -171,6 +185,13 @@ export default React.memo(function VsGame() {
           </>
         )}
       </div>
+
+      {phase === "playing" && (
+        <div className="vs-stats">
+          <span className="hud-label vs-stat-left">Left {score.left}</span>
+          <span className="hud-label vs-stat-right">Right {score.right}</span>
+        </div>
+      )}
 
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
     </div>

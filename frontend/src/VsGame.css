@@ -28,6 +28,23 @@
   color: var(--signal-b);
 }
 
+.vs-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.vs-stat-left {
+  color: var(--signal-a);
+}
+
+.vs-stat-right {
+  color: var(--signal-b);
+}
+
 .vs-canvas {
   display: block;
   width: 100%;
