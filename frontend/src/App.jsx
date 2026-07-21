@@ -33,9 +33,9 @@ export default function App() {
     if (soundsLoaded.current) return;
     soundsLoaded.current = true;
     await sound.loadAll({
-      wall: '/sfx/ball-contact.mp3',
-      paddle: '/sfx/ball-paddle.mp3',
-      click: '/sfx/menu-click.mp3',
+      wall: '/Assets/sfx/ball-contact.mp3',
+      paddle: '/Assets/sfx/ball-paddle.mp3',
+      click: '/Assets/sfx/menu-click.mp3',
     });
     sound.setVolume(volume);
   };

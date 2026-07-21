@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import './SoloGame.css';
 
 // Theme colors (kept as literals here since canvas fillStyle can't read
@@ -219,13 +219,13 @@ function Rally({ onGameOver }) {
   );
 }
 
-export default function SoloGame() {
+export default React.memo(function SoloGame() {
   const [key, setKey] = useState(0);
   const [finalScore, setFinalScore] = useState(null);
 
-  const handleGameOver = (score) => {
+  const handleGameOver = useCallback((score) => {
     setFinalScore(score);
-  };
+  }, []);
 
   const restart = () => {
     setFinalScore(null);
@@ -248,4 +248,4 @@ export default function SoloGame() {
       )}
     </div>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import React, { memo, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import "./VsGame.css";
 
@@ -10,7 +10,7 @@ const PADDLE_W = 12;
 const PADDLE_H = 80;
 const BALL_R = 8;
 
-export default function VsGame() {
+export default React.memo(function VsGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
   const [phase, setPhase] = useState("idle"); // idle | waiting | playing | ended
@@ -175,4 +175,4 @@ export default function VsGame() {
       <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
     </div>
   );
-}
+});
