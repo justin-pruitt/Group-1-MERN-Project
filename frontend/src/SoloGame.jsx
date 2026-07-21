@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { sound } from './sound';
 import './SoloGame.css';
 
 // Theme colors (kept as literals here since canvas fillStyle can't read
@@ -108,12 +109,14 @@ function Rally({ onGameOver }) {
         ball.speedY *= -1;
         ball.speedX += (Math.random() - 0.5) * 0.6;
         clampSpeed();
+        sound.play('wall');
       }
 
       if (ball.x + ball.r >= canvas.width - 8) {
         ball.speedX *= -1;
         ball.speedY += (Math.random() - 0.5) * 0.6;
         clampSpeed();
+        sound.play('wall');
       }
 
       if (
@@ -133,6 +136,7 @@ function Rally({ onGameOver }) {
           ball.speedX = Math.cos(angle) * speed;
           ball.speedY = Math.sin(angle) * speed;
           clampSpeed();
+          sound.play('paddle');
 
           player.volleys += 1;
           setGameStats({

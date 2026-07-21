@@ -27,6 +27,7 @@ const MODES = [
 export default function App() {
   const [mode, setMode] = useState(null);
   const [volume, setVolume] = useState(0.8);
+  const [musicVolume, setMusicVolume] = useState(0.5);
   const soundsLoaded = useRef(false);
 
   const ensureSoundsLoaded = async () => {
@@ -38,6 +39,10 @@ export default function App() {
       click: '/Assets/sfx/menu-click.mp3',
     });
     sound.setVolume(volume);
+    sound.setMusicVolume(musicVolume);
+    // Browsers require a user gesture before audio can start; this runs
+    // inside a click handler (selectMode/goBack), so it's a valid gesture.
+    sound.startMusic();
   };
 
   const handleClickSound = async () => {
@@ -61,18 +66,38 @@ export default function App() {
     sound.setVolume(v);
   };
 
+  const handleMusicVolumeChange = (e) => {
+    const v = Number(e.target.value);
+    setMusicVolume(v);
+    sound.setMusicVolume(v);
+  };
+
   const VolumeSlider = (
-    <div className="volume-control">
-      <label htmlFor="volume" className="hud-label">vol</label>
-      <input
-        id="volume"
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={volume}
-        onChange={handleVolumeChange}
-      />
+    <div className="volume-panel">
+      <div className="volume-control">
+        <label htmlFor="volume" className="hud-label">sfx</label>
+        <input
+          id="volume"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volume}
+          onChange={handleVolumeChange}
+        />
+      </div>
+      <div className="volume-control">
+        <label htmlFor="music-volume" className="hud-label">music</label>
+        <input
+          id="music-volume"
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={musicVolume}
+          onChange={handleMusicVolumeChange}
+        />
+      </div>
     </div>
   );
 

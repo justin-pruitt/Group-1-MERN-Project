@@ -1,5 +1,6 @@
 import React, { memo, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
+import { sound } from "./sound";
 import "./VsGame.css";
 
 // Must match backend/game/PongMatch.js
@@ -66,6 +67,7 @@ export default React.memo(function VsGame() {
     const ctx = canvasRef.current.getContext("2d");
     let frameId;
     let lastDrawnScore = { left: 0, right: 0 };
+    let lastSpeed = { x: null, y: null };
 
     const draw = () => {
       const state = stateRef.current;
@@ -104,10 +106,20 @@ export default React.memo(function VsGame() {
         ctx.arc(state.ball.x, state.ball.y, BALL_R, 0, Math.PI * 2);
         ctx.fill();
 
-        if (
-          state.score.left !== lastDrawnScore.left ||
-          state.score.right !== lastDrawnScore.right
-        ) {
+        const scored =
+          state.score.left !== lastDrawnScore.left || state.score.right !== lastDrawnScore.right;
+
+        if (!scored && lastSpeed.x !== null) {
+          if (Math.sign(state.ball.speedX) !== Math.sign(lastSpeed.x)) {
+            sound.play("paddle");
+          }
+          if (Math.sign(state.ball.speedY) !== Math.sign(lastSpeed.y)) {
+            sound.play("wall");
+          }
+        }
+        lastSpeed = { x: state.ball.speedX, y: state.ball.speedY };
+
+        if (scored) {
           lastDrawnScore = state.score;
           setScore(state.score);
         }
