@@ -16,7 +16,6 @@ const MAX_BALL_SPEED = 20;
 const WIN_SCORE = 7;
 const FLICK_MAX_BALL_SPEED = MAX_BALL_SPEED * 1.6; // hard flicks can briefly exceed the normal cap
 const FLICK_INFLUENCE = 0.012; // converts paddle px/sec into ball speed units — tune to taste
-const MAX_BOUNCE_ANGLE = (Math.PI / 180) * 30;
 const TICK_MS = 20; // 50Hz
 
 class PongMatch {
@@ -49,8 +48,8 @@ class PongMatch {
     return {
       x: WIDTH / 2,
       y: HEIGHT / 2,
-      speedX: 4.5 * direction,
-      speedY: 1.8 * (Math.random() < 0.5 ? 1 : -1),
+      speedX: 4 * direction,
+      speedY: 3 * (Math.random() < 0.5 ? 1 : -1),
     };
   }
 
@@ -81,18 +80,6 @@ class PongMatch {
     }
   }
 
-  resetBallToHorizontal(direction = null, speed = null) {
-    const { ball } = this.state;
-    const directionSign = direction === null ? Math.sign(ball.speedX) || 1 : Math.sign(direction) || 1;
-    const baseSpeed = speed ?? Math.sqrt(ball.speedX * ball.speedX + ball.speedY * ball.speedY);
-    const horizontalSpeed = Math.max(Math.abs(baseSpeed) * 0.8, 4.5);
-    const verticalSpeed = Math.min(Math.abs(baseSpeed) * 0.25, 2.8);
-
-    ball.speedX = directionSign * horizontalSpeed;
-    ball.speedY = (Math.sign(ball.speedY) || (Math.random() < 0.5 ? -1 : 1)) * verticalSpeed;
-    this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
-  }
-
   tick() {
     const { ball, paddles, score } = this.state;
     const dt = TICK_MS / 1000;
@@ -119,15 +106,8 @@ class PongMatch {
       ball.y + BALL_R >= paddles.left.y &&
       ball.y - BALL_R <= paddles.left.y + PADDLE_H
     ) {
-      const hitPos = ((ball.y - paddles.left.y) / PADDLE_H) * 2 - 1;
-      const clampedHit = Math.max(-1, Math.min(1, hitPos));
-      const launchSpeed = Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
-      const angle = clampedHit * MAX_BOUNCE_ANGLE;
-      const flickNudge = Math.max(-1.3, Math.min(1.3, paddleVelocity.left * FLICK_INFLUENCE * 0.05));
-
-      this.resetBallToHorizontal(1, launchSpeed);
-      ball.speedX = Math.cos(angle) * launchSpeed;
-      ball.speedY = Math.sin(angle) * launchSpeed + flickNudge;
+      ball.speedX = Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
+      ball.speedY += paddleVelocity.left * FLICK_INFLUENCE;
       this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
     }
 
@@ -138,15 +118,8 @@ class PongMatch {
       ball.y + BALL_R >= paddles.right.y &&
       ball.y - BALL_R <= paddles.right.y + PADDLE_H
     ) {
-      const hitPos = ((ball.y - paddles.right.y) / PADDLE_H) * 2 - 1;
-      const clampedHit = Math.max(-1, Math.min(1, hitPos));
-      const launchSpeed = Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
-      const angle = clampedHit * MAX_BOUNCE_ANGLE;
-      const flickNudge = Math.max(-1.3, Math.min(1.3, paddleVelocity.right * FLICK_INFLUENCE * 0.05));
-
-      this.resetBallToHorizontal(-1, launchSpeed);
-      ball.speedX = -Math.cos(angle) * launchSpeed;
-      ball.speedY = Math.sin(angle) * launchSpeed + flickNudge;
+      ball.speedX = -Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
+      ball.speedY += paddleVelocity.right * FLICK_INFLUENCE;
       this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
     }
 
