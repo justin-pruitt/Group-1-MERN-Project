@@ -14,6 +14,8 @@ const PADDLE_H = 80;
 const BALL_R = 8;
 const MAX_BALL_SPEED = 20;
 const WIN_SCORE = 7;
+const FLICK_MAX_BALL_SPEED = MAX_BALL_SPEED * 1.6; // hard flicks can briefly exceed the normal cap
+const FLICK_INFLUENCE = 0.012; // converts paddle px/sec into ball speed units — tune to taste
 const TICK_MS = 20; // 50Hz
 
 class PongMatch {
@@ -24,6 +26,11 @@ class PongMatch {
     this.onGameEnd = onGameEnd || (() => {});
     this.interval = null;
     this.state = this.initialState();
+    // track paddle y from previous tick to compute flick velocity
+    this.prevPaddleY = {
+      left: this.state.paddles.left.y,
+      right: this.state.paddles.right.y,
+    };
   }
 
   initialState() {
@@ -62,8 +69,28 @@ class PongMatch {
     this.interval = null;
   }
 
+  // Keeps ball speed within [min, max] while preserving direction.
+  clampBallSpeed(max) {
+    const { ball } = this.state;
+    const speed = Math.sqrt(ball.speedX * ball.speedX + ball.speedY * ball.speedY);
+    if (speed > max) {
+      const scale = max / speed;
+      ball.speedX *= scale;
+      ball.speedY *= scale;
+    }
+  }
+
   tick() {
     const { ball, paddles, score } = this.state;
+    const dt = TICK_MS / 1000;
+
+    // Paddle velocity since the previous tick, in px/sec — this is the "flick."
+    const paddleVelocity = {
+      left: (paddles.left.y - this.prevPaddleY.left) / dt,
+      right: (paddles.right.y - this.prevPaddleY.right) / dt,
+    };
+    this.prevPaddleY.left = paddles.left.y;
+    this.prevPaddleY.right = paddles.right.y;
 
     ball.x += ball.speedX;
     ball.y += ball.speedY;
@@ -80,6 +107,8 @@ class PongMatch {
       ball.y - BALL_R <= paddles.left.y + PADDLE_H
     ) {
       ball.speedX = Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
+      ball.speedY += paddleVelocity.left * FLICK_INFLUENCE;
+      this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
     }
 
     if (
@@ -90,6 +119,8 @@ class PongMatch {
       ball.y - BALL_R <= paddles.right.y + PADDLE_H
     ) {
       ball.speedX = -Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
+      ball.speedY += paddleVelocity.right * FLICK_INFLUENCE;
+      this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
     }
 
     if (ball.x - BALL_R <= 0) {
