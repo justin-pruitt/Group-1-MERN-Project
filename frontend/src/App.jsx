@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState,useRef } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
 import "./theme.css";
