@@ -25,5 +25,13 @@ jobs:
             cd ~/Squash/backend
             npm install
 
+            cat > .env << 'ENVEOF'
+            MONGO_URI=${{ secrets.MONGO_URI }}
+            SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+            GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}
+            GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}
+            NODE_ENV=production
+            ENVEOF
+
             pm2 restart squash-backend || pm2 start server.js --name squash-backend
             pm2 save

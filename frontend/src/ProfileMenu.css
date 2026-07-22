@@ -1,0 +1,27 @@
+.profile-menu {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 32px;
+}
+
+.profile-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 1px solid var(--edge, #1e2740);
+}
+
+.profile-name {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  color: var(--text-dim, #6b7694);
+}
+
+.profile-signin {
+  text-decoration: none;
+  display: inline-block;
+}
