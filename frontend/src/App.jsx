@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
 import ProfileMenu from "./ProfileMenu";
+import Leaderboard from "./Leaderboard";
 import "./theme.css";
 import "./App.css";
 import { sound } from './sound';
@@ -135,6 +136,11 @@ export default function App() {
             {m.locked && <div className="mode-card-lock hud-label">offline</div>}
           </button>
         ))}
+      </div>
+
+      <div className="home-leaderboard bracket-frame">
+        <div className="hud-label home-leaderboard-heading">leaderboard</div>
+        <Leaderboard allowModeSwitch />
       </div>
     </div>
   );
