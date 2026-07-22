@@ -59,3 +59,70 @@
   margin: 12px 0 20px;
   text-shadow: 0 0 20px rgba(63, 224, 208, 0.4);
 }
+
+.solo-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.solo-save-error {
+  color: var(--danger);
+  margin-top: 10px;
+}
+
+.solo-leaderboard {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--edge);
+  text-align: left;
+}
+
+.solo-leaderboard-heading {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.leaderboard-status {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+}
+
+.leaderboard-rank {
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.leaderboard-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-score {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--signal-a);
+}

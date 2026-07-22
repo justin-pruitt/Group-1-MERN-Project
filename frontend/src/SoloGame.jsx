@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { sound } from './sound';
+import { useAuth } from './AuthContext';
 import './SoloGame.css';
 
 // Theme colors (kept as literals here since canvas fillStyle can't read
@@ -227,17 +228,86 @@ function Rally({ onGameOver }) {
   );
 }
 
+function Leaderboard({ mode, refreshKey }) {
+  const [scores, setScores] = useState([]);
+  const [status, setStatus] = useState('loading'); // loading | ready | error
+
+  useEffect(() => {
+    let cancelled = false;
+    setStatus('loading');
+    fetch(`/api/leaderboard?mode=${mode}`)
+      .then((res) => {
+        if (!res.ok) throw new Error('bad response');
+        return res.json();
+      })
+      .then((data) => {
+        if (cancelled) return;
+        setScores(data);
+        setStatus('ready');
+      })
+      .catch(() => {
+        if (!cancelled) setStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [mode, refreshKey]);
+
+  if (status === 'loading') {
+    return <div className="leaderboard-status hud-label">Loading leaderboard…</div>;
+  }
+  if (status === 'error') {
+    return <div className="leaderboard-status hud-label">Leaderboard unavailable</div>;
+  }
+  if (scores.length === 0) {
+    return <div className="leaderboard-status hud-label">No runs saved yet</div>;
+  }
+
+  return (
+    <ol className="leaderboard-list">
+      {scores.map((entry, i) => (
+        <li key={entry._id} className="leaderboard-row">
+          <span className="leaderboard-rank hud-label">{i + 1}</span>
+          <span className="leaderboard-name">{entry.displayName}</span>
+          <span className="leaderboard-score">{entry.score}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 export default React.memo(function SoloGame() {
   const [key, setKey] = useState(0);
   const [finalScore, setFinalScore] = useState(null);
+  const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
+  const [leaderboardKey, setLeaderboardKey] = useState(0);
+  const { user, loading: authLoading, loginUrl } = useAuth();
 
   const handleGameOver = useCallback((score) => {
     setFinalScore(score);
+    setSaveState('idle');
   }, []);
 
   const restart = () => {
     setFinalScore(null);
     setKey((k) => k + 1);
+  };
+
+  const saveScore = async () => {
+    setSaveState('saving');
+    try {
+      const res = await fetch('/api/leaderboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ score: finalScore, mode: 'solo' }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      setSaveState('saved');
+      setLeaderboardKey((k) => k + 1);
+    } catch {
+      setSaveState('error');
+    }
   };
 
   return (
@@ -249,9 +319,34 @@ export default React.memo(function SoloGame() {
         <div className="solo-gameover bracket-frame">
           <div className="hud-label">run ended</div>
           <div className="solo-final-score">{finalScore}</div>
-          <button className="hud-btn" onClick={restart}>
-            Run it back
-          </button>
+
+          <div className="solo-actions">
+            {!authLoading &&
+              (user ? (
+                <button
+                  className="hud-btn"
+                  onClick={saveScore}
+                  disabled={saveState === 'saving' || saveState === 'saved'}
+                >
+                  {saveState === 'saved' ? 'Saved' : saveState === 'saving' ? 'Saving…' : 'Save run'}
+                </button>
+              ) : (
+                <a className="hud-btn" href={loginUrl}>
+                  Sign in with Google to save
+                </a>
+              ))}
+            <button className="hud-btn" onClick={restart}>
+              Run it back
+            </button>
+          </div>
+          {saveState === 'error' && (
+            <div className="hud-label solo-save-error">Couldn't save — try again</div>
+          )}
+
+          <div className="solo-leaderboard">
+            <div className="hud-label solo-leaderboard-heading">top runs</div>
+            <Leaderboard mode="solo" refreshKey={leaderboardKey} />
+          </div>
         </div>
       )}
     </div>

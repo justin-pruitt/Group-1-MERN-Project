@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
+import ProfileMenu from "./ProfileMenu";
 import "./theme.css";
 import "./App.css";
 import { sound } from './sound';
@@ -116,6 +117,7 @@ export default function App() {
 
   return (
     <div className="app-shell">
+      <ProfileMenu />
       <div className="wordmark">VECTOR</div>
       <div className="tagline hud-label">select mode</div>
       {VolumeSlider}
