@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const leaderboardRoutes = require('./routes/leaderboard');
 
 const app = express();
+app.set('trust proxy', 1); // nginx sits in front of us — trust its X-Forwarded-* headers
 app.use(cors({ origin: process.env.CLIENT_URL || 'https://neilpena.xyz', credentials: true }));
 app.use(express.json());
 
