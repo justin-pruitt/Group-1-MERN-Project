@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 
 const SettingsContext = createContext(null);
-const DEFAULTS = { crtBulge: false, scanLines: false };
+const DEFAULTS = { crtBulge: false, scanLines: false, sfxVolume: 0.8, musicVolume: 0.5 };
 
 export function SettingsProvider({ children }) {
   const { user } = useAuth();

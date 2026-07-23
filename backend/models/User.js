@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema(
     settings: {
       crtBulge: { type: Boolean, default: false },
       scanLines: { type: Boolean, default: false },
+      sfxVolume: { type: Number, default: 0.8, min: 0, max: 1 },
+      musicVolume: { type: Number, default: 0.5, min: 0, max: 1 },
     },
   },
   { timestamps: true }

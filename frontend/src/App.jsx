@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
 import ProfileMenu from "./ProfileMenu";
-import SettingsPanel from "./SettingsPanel";
+import SettingsButton from "./SettingsButton";
 import { useSettings } from "./SettingsContext";
 import Leaderboard from "./Leaderboard";
 import "./theme.css";
@@ -29,10 +29,9 @@ const MODES = [
   },
 ];
 
+
 export default function App() {
   const [mode, setMode] = useState(null);
-  const [volume, setVolume] = useState(0.8);
-  const [musicVolume, setMusicVolume] = useState(0.5);
   const soundsLoaded = useRef(false);
   const { settings } = useSettings();
 
@@ -50,8 +49,8 @@ export default function App() {
       paddle: '/Assets/sfx/ball-paddle.mp3',
       click: '/Assets/sfx/menu-click.mp3',
     });
-    sound.setVolume(volume);
-    sound.setMusicVolume(musicVolume);
+    sound.setVolume(settings.volume);
+    sound.setMusicVolume(settings.musicVolume);
     // Browsers require a user gesture before audio can start; this runs
     // inside a click handler (selectMode/goBack), so it's a valid gesture.
     sound.startMusic();
@@ -84,44 +83,15 @@ export default function App() {
     sound.setMusicVolume(v);
   };
 
-  const VolumeSlider = (
-    <div className="volume-panel">
-      <div className="volume-control">
-        <label htmlFor="volume" className="hud-label">sfx</label>
-        <input
-          id="volume"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={volume}
-          onChange={handleVolumeChange}
-        />
-      </div>
-      <div className="volume-control">
-        <label htmlFor="music-volume" className="hud-label">music</label>
-        <input
-          id="music-volume"
-          type="range"
-          min="0"
-          max="1"
-          step="0.01"
-          value={musicVolume}
-          onChange={handleMusicVolumeChange}
-        />
-      </div>
-    </div>
-  );
-
   if (mode) {
     return (
       <div className="app-shell">
         <button className="hud-btn back-btn" onClick={goBack}>
           &larr; Modes
         </button>
-        {VolumeSlider}
         {mode === "solo" && <SoloGame />}
         {mode === "vs" && <VsGame />}
+        <SettingsButton />
       </div>
     );
   }
@@ -131,8 +101,6 @@ export default function App() {
       <ProfileMenu />
       <div className="wordmark">VECTOR</div>
       <div className="tagline hud-label">select mode</div>
-      {VolumeSlider}
-      <SettingsPanel />
 
       <div className="mode-grid">
         {MODES.map((m) => (
@@ -153,6 +121,8 @@ export default function App() {
         <div className="hud-label home-leaderboard-heading">leaderboard</div>
         <Leaderboard allowModeSwitch />
       </div>
+
+      <SettingsButton />
     </div>
   );
 }

@@ -9,9 +9,18 @@ function requireAuth(req, res, next) {
 }
 
 router.patch('/', requireAuth, async (req, res) => {
-  const { crtBulge, scanLines } = req.body;
+  const { crtBulge, scanLines, sfxVolume, musicVolume } = req.body;
+
   if (crtBulge !== undefined) req.user.settings.crtBulge = !!crtBulge;
   if (scanLines !== undefined) req.user.settings.scanLines = !!scanLines;
+  if (sfxVolume !== undefined) {
+    const v = Number(sfxVolume);
+    if (Number.isFinite(v) && v >= 0 && v <= 1) req.user.settings.sfxVolume = v;
+  }
+  if (musicVolume !== undefined) {
+    const v = Number(musicVolume);
+    if (Number.isFinite(v) && v >= 0 && v <= 1) req.user.settings.musicVolume = v;
+  }
 
   try {
     await req.user.save();
