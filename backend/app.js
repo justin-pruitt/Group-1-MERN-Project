@@ -2,13 +2,14 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoStore = require('connect-mongo').default;
 const { passport } = require('./config/passport');
 const authRoutes = require('./routes/auth');
 const leaderboardRoutes = require('./routes/leaderboard');
 const settingsRoutes = require('./routes/settings');
 
 const app = express();
+app.set('trust proxy', 1); // nginx sits in front of us — trust its X-Forwarded-* headers
 app.use(cors({ origin: process.env.CLIENT_URL || 'https://neilpena.xyz', credentials: true }));
 app.use(express.json());
 

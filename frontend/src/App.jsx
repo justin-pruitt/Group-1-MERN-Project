@@ -2,8 +2,12 @@ import { useState, useRef } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
 import ProfileMenu from "./ProfileMenu";
+<<<<<<< HEAD
 import SettingsPanel from "./SettingsPanel";
 import { useSettings } from "./SettingsContext";
+=======
+import Leaderboard from "./Leaderboard";
+>>>>>>> d751760f5f1c4306a733b8a10efa21557f3ec718
 import "./theme.css";
 import "./App.css";
 import "./crt.css";
@@ -146,6 +150,11 @@ export default function App() {
             {m.locked && <div className="mode-card-lock hud-label">offline</div>}
           </button>
         ))}
+      </div>
+
+      <div className="home-leaderboard bracket-frame">
+        <div className="hud-label home-leaderboard-heading">leaderboard</div>
+        <Leaderboard allowModeSwitch />
       </div>
     </div>
   );

@@ -1,0 +1,75 @@
+.leaderboard-widget {
+  width: 100%;
+}
+
+.leaderboard-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.leaderboard-tab {
+  background: transparent;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  padding: 6px 16px;
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.leaderboard-tab:hover {
+  border-color: var(--signal-a);
+  color: var(--text);
+}
+
+.leaderboard-tab.active {
+  background: var(--panel-raised);
+  border-color: var(--signal-a);
+  color: var(--signal-a);
+}
+
+.leaderboard-status {
+  text-align: center;
+  padding: 12px 0;
+}
+
+.leaderboard-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.leaderboard-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+}
+
+.leaderboard-rank {
+  width: 20px;
+  flex-shrink: 0;
+}
+
+.leaderboard-name {
+  flex: 1;
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.leaderboard-score {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--signal-a);
+}

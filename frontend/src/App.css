@@ -108,3 +108,16 @@
   align-self: flex-start;
   margin-bottom: 24px;
 }
+
+.home-leaderboard {
+  width: 100%;
+  max-width: 480px;
+  margin-top: 40px;
+  padding: 20px;
+  background: var(--panel);
+}
+
+.home-leaderboard-heading {
+  text-align: center;
+  margin-bottom: 12px;
+}

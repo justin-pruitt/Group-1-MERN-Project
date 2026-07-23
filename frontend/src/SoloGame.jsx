@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { sound } from './sound';
 import { useAuth } from './AuthContext';
+import Leaderboard from './Leaderboard';
 import './SoloGame.css';
 
 // Theme colors (kept as literals here since canvas fillStyle can't read
@@ -225,54 +226,6 @@ function Rally({ onGameOver }) {
         className="solo-canvas"
       />
     </div>
-  );
-}
-
-function Leaderboard({ mode, refreshKey }) {
-  const [scores, setScores] = useState([]);
-  const [status, setStatus] = useState('loading'); // loading | ready | error
-
-  useEffect(() => {
-    let cancelled = false;
-    setStatus('loading');
-    fetch(`/api/leaderboard?mode=${mode}`)
-      .then((res) => {
-        if (!res.ok) throw new Error('bad response');
-        return res.json();
-      })
-      .then((data) => {
-        if (cancelled) return;
-        setScores(data);
-        setStatus('ready');
-      })
-      .catch(() => {
-        if (!cancelled) setStatus('error');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [mode, refreshKey]);
-
-  if (status === 'loading') {
-    return <div className="leaderboard-status hud-label">Loading leaderboard…</div>;
-  }
-  if (status === 'error') {
-    return <div className="leaderboard-status hud-label">Leaderboard unavailable</div>;
-  }
-  if (scores.length === 0) {
-    return <div className="leaderboard-status hud-label">No runs saved yet</div>;
-  }
-
-  return (
-    <ol className="leaderboard-list">
-      {scores.map((entry, i) => (
-        <li key={entry._id} className="leaderboard-row">
-          <span className="leaderboard-rank hud-label">{i + 1}</span>
-          <span className="leaderboard-name">{entry.displayName}</span>
-          <span className="leaderboard-score">{entry.score}</span>
-        </li>
-      ))}
-    </ol>
   );
 }
 
