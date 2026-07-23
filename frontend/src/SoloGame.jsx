@@ -21,21 +21,17 @@ function Rally({ onGameOver }) {
     const ctx = canvas.getContext('2d');
 
     const player = { x: 15, y: 150, w: 12, h: 80, volleys: 0 };
+    let prevPlayerY = player.y;
 
-    // Base speed the ball resets to on each life; growth is capped so
-    // things never become unplayable.
-    // Matched to versus mode's real-world speed: PongMatch.js runs its
-    // physics on a 50Hz server tick (launch ~250px/s, cap ~1000px/s),
-    // while this loop is normalized to REFERENCE_FPS=60 below, so the
-    // per-"frame" constants here are those targets divided by 60.
+    // Matched to versus mode's real-world speed — see PongMatch.js.
     const BASE_SPEED = 4.2;
-    const MAX_SPEED = 16.7;
+    const MAX_SPEED = 20;
+    const FLICK_MAX_SPEED = MAX_SPEED * 1.6; // mirrors PongMatch's FLICK_MAX_BALL_SPEED headroom
+    const FLICK_INFLUENCE = 0.012; // paddle px/sec -> ball speed units; mirrors PongMatch's FLICK_INFLUENCE
 
-    // Launch at a random angle each time so the very first rally isn't
-    // always the same predictable path.
     const randomLaunch = () => {
-      const angle = (Math.random() * 0.6 - 0.3) * Math.PI; // ~-54deg to 54deg
-      const dir = Math.random() < 0.5 ? 1 : -1; // toward paddle or away first
+      const angle = (Math.random() * 0.6 - 0.3) * Math.PI;
+      const dir = Math.random() < 0.5 ? 1 : -1;
       return {
         x: 300,
         y: 150 + Math.random() * 100,
@@ -47,16 +43,13 @@ function Rally({ onGameOver }) {
 
     const ball = randomLaunch();
 
-    // Keep the ball's speed within [BASE_SPEED, MAX_SPEED] while preserving
-    // its current direction, so ramping never runs away or stalls out.
-    const clampSpeed = () => {
+    // Max-only clamp, matching PongMatch.clampBallSpeed — no floor needed
+    // now that bounces are pure reflections (magnitude-preserving) rather
+    // than randomized.
+    const clampSpeed = (max = MAX_SPEED) => {
       const speed = Math.sqrt(ball.speedX * ball.speedX + ball.speedY * ball.speedY);
-      if (speed > MAX_SPEED) {
-        const scale = MAX_SPEED / speed;
-        ball.speedX *= scale;
-        ball.speedY *= scale;
-      } else if (speed < BASE_SPEED) {
-        const scale = BASE_SPEED / speed;
+      if (speed > max) {
+        const scale = max / speed;
         ball.speedX *= scale;
         ball.speedY *= scale;
       }
@@ -70,11 +63,14 @@ function Rally({ onGameOver }) {
       cell.y = Math.floor(Math.random() * (canvas.height - 40)) + 20;
     };
 
+    const WALL = 8; // matches PongMatch's WALL constant
+
     const handleMove = (clientY) => {
       const rect = canvas.getBoundingClientRect();
       const scaleY = canvas.height / rect.height;
       const relativeY = (clientY - rect.top) * scaleY;
-      player.y = relativeY - player.h / 2;
+      const targetY = relativeY - player.h / 2;
+      player.y = Math.max(WALL, Math.min(targetY, canvas.height - WALL - player.h));
     };
 
     const onMouseMove = (e) => handleMove(e.clientY);
@@ -90,13 +86,8 @@ function Rally({ onGameOver }) {
 
     let animationFrameId;
     let lastTime = null;
-
-    // Reference frame rate the BASE_SPEED/MAX_SPEED constants were tuned
-    // against. Scaling by (dt * REFERENCE_FPS) means the ball covers the
-    // same distance per second on a 30Hz, 60Hz, or 144Hz device instead of
-    // moving faster on higher refresh-rate screens.
     const REFERENCE_FPS = 60;
-    const MAX_DT = 1 / 30; // clamp so a tab-switch/lag spike can't let the ball tunnel through the paddle in one jump
+    const MAX_DT = 1 / 30;
 
     const updateGame = (now) => {
       if (lastTime === null) lastTime = now;
@@ -104,49 +95,42 @@ function Rally({ onGameOver }) {
       lastTime = now;
       const step = dt * REFERENCE_FPS;
 
+      // Paddle velocity since last frame — this is the "flick," same
+      // concept as PongMatch's paddleVelocity tracking.
+      const paddleVelocity = (player.y - prevPlayerY) / dt;
+      prevPlayerY = player.y;
+
       ball.x += ball.speedX * step;
       ball.y += ball.speedY * step;
 
       if (ball.y - ball.r <= 8 || ball.y + ball.r >= canvas.height - 8) {
         ball.speedY *= -1;
-        ball.speedX += (Math.random() - 0.5) * 0.6;
-        clampSpeed();
         sound.play('wall');
       }
 
       if (ball.x + ball.r >= canvas.width - 8) {
         ball.speedX *= -1;
-        ball.speedY += (Math.random() - 0.5) * 0.6;
-        clampSpeed();
         sound.play('wall');
       }
 
       if (
+        ball.speedX < 0 &&
         ball.x - ball.r <= player.x + player.w &&
         ball.x + ball.r >= player.x &&
         ball.y + ball.r >= player.y &&
         ball.y - ball.r <= player.y + player.h
       ) {
-        if (ball.speedX < 0) {
-          const hitPos = ((ball.y - player.y) / player.h) * 2 - 1;
-          const clampedHit = Math.max(-1, Math.min(1, hitPos));
+        ball.speedX = Math.min(Math.abs(ball.speedX) * 1.05, MAX_SPEED);
+        ball.speedY += paddleVelocity * FLICK_INFLUENCE;
+        clampSpeed(FLICK_MAX_SPEED);
+        sound.play('paddle');
 
-          const speed = Math.sqrt(ball.speedX * ball.speedX + ball.speedY * ball.speedY) * 1.05;
-          const maxBounceAngle = (Math.PI / 180) * 60;
-          const angle = clampedHit * maxBounceAngle;
-
-          ball.speedX = Math.cos(angle) * speed;
-          ball.speedY = Math.sin(angle) * speed;
-          clampSpeed();
-          sound.play('paddle');
-
-          player.volleys += 1;
-          setGameStats({
-            volleys: player.volleys,
-            points: totalPointsCollected,
-            total: player.volleys + totalPointsCollected
-          });
-        }
+        player.volleys += 1;
+        setGameStats({
+          volleys: player.volleys,
+          points: totalPointsCollected,
+          total: player.volleys + totalPointsCollected
+        });
       }
 
       const distX = ball.x - cell.x;
