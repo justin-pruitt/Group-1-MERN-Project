@@ -1,23 +1,31 @@
 const nodemailer = require('nodemailer');
 
-// Gmail SMTP transport. Requires a Google App Password (not your regular
-// Gmail password) — generate one at https://myaccount.google.com/apppasswords
-// with 2-Step Verification turned on for the sending account.
+// Gmail via OAuth2 over HTTPS (not raw SMTP) — avoids providers/hosts that
+// block outbound SMTP ports (25/465/587). Requires:
+//   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET  (same ones used for Google login)
+//   GMAIL_REFRESH_TOKEN                     (generated once via OAuth Playground,
+//                                            authorized against GMAIL_USER's account)
+//   GMAIL_USER                              (the sending address)
 let transporter = null;
 let mailerConfigured = false;
 
-if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+const { GMAIL_USER, GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, GMAIL_REFRESH_TOKEN } = process.env;
+
+if (GMAIL_USER && GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GMAIL_REFRESH_TOKEN) {
   transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.GMAIL_USER,
-      pass: process.env.GMAIL_APP_PASSWORD,
+      type: 'OAuth2',
+      user: GMAIL_USER,
+      clientId: GOOGLE_CLIENT_ID,
+      clientSecret: GOOGLE_CLIENT_SECRET,
+      refreshToken: GMAIL_REFRESH_TOKEN,
     },
   });
   mailerConfigured = true;
 } else {
   console.warn(
-    'GMAIL_USER/GMAIL_APP_PASSWORD not set — verification emails are disabled until they are.'
+    'GMAIL_USER/GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/GMAIL_REFRESH_TOKEN not fully set — verification emails are disabled until they are.'
   );
 }
 
@@ -26,9 +34,8 @@ async function sendVerificationEmail(toEmail, verifyUrl) {
     console.warn(`Mailer not configured — would have sent verification link to ${toEmail}: ${verifyUrl}`);
     return;
   }
-
   await transporter.sendMail({
-    from: `"Vector" <${process.env.GMAIL_USER}>`,
+    from: `"Vector" <${GMAIL_USER}>`,
     to: toEmail,
     subject: 'Verify your email for Vector',
     html: `

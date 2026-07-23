@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 
 const AuthContext = createContext(null);
 
@@ -6,7 +6,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const refresh = async () => {
+  const refresh = useCallback(async () => {
     try {
       const res = await fetch('/api/auth/me', { credentials: 'include' });
       const data = await res.json();
@@ -16,11 +16,23 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     refresh();
   }, []);
+
+  // Re-check auth state after the verify-email redirect lands
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('verify') === 'success') {
+      refresh();
+      // strip the query param so a refresh doesn't re-trigger this
+      params.delete('verify');
+      const newUrl = window.location.pathname + (params.toString() ? `?${params}` : '');
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, [refresh]);
 
   const logout = async () => {
     await fetch('/api/auth/logout', { method: 'POST', credentials: 'include' });

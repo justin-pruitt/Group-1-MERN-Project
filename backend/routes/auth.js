@@ -63,4 +63,37 @@ router.post('/logout', (req, res) => {
   });
 });
 
+// below is new route for resending verification email (lines 68-97)
+
+const crypto = require('crypto');
+const { sendVerificationEmail } = require('../config/mailer');
+
+// Requires an active session — reuses passport's req.user
+router.post('/resend-verification', async (req, res) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Not logged in' });
+  }
+  if (req.user.emailVerified) {
+    return res.status(400).json({ error: 'Email already verified' });
+  }
+  if (!req.user.email) {
+    return res.status(400).json({ error: 'No email on file for this account' });
+  }
+
+  try {
+    const verificationToken = crypto.randomBytes(32).toString('hex');
+    req.user.verificationToken = verificationToken;
+    req.user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
+    await req.user.save();
+
+    const verifyUrl = `${CLIENT_URL}/api/auth/verify-email?token=${verificationToken}`;
+    await sendVerificationEmail(req.user.email, verifyUrl);
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Failed to resend verification email:', err.message);
+    res.status(500).json({ error: 'Failed to send email' });
+  }
+});
+
 module.exports = router;

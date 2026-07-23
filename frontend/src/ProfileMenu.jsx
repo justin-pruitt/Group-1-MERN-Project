@@ -1,11 +1,35 @@
 import { useAuth } from './AuthContext';
 import { getInitials } from './initials';
 import './ProfileMenu.css';
+import { useState } from 'react';
 
 export default function ProfileMenu() {
   const { user, loading, logout, loginUrl } = useAuth();
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   if (loading) return <div className="profile-menu" />;
+
+  const handleResend = async () => {
+    setSending(true);
+    setSent(false);
+    try {
+      const res = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        setSent(true);
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to send verification email');
+      }
+    } catch (err) {
+      alert('Network error sending verification email');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div className="profile-menu">
@@ -16,9 +40,14 @@ export default function ProfileMenu() {
             {getInitials(user.displayName)}
           </span>
           {!user.emailVerified && (
-            <span className="profile-verify-banner" title="Check your inbox for a verification link">
-              Verify your email
-            </span>
+            <button // button for resending verification email
+              className="profile-verify-banner"
+              onClick={handleResend}
+              disabled={sending}
+              title="Click to resend the verification link to your email"
+            >
+              {sending ? 'Sending...' : sent ? 'Sent! Check your inbox' : 'Verify your email'}
+            </button>
           )}
           <button className="hud-btn" onClick={logout}>
             Sign out
