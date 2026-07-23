@@ -60,7 +60,7 @@ export default function SettingsPanel() {
           checked={settings.crtBulge}
           onChange={(e) => updateSetting('crtBulge', e.target.checked)}
         />
-        CRT Bulge
+        CRT Bulge (cursor may appear offset)
       </label>
 
       {!user && (
