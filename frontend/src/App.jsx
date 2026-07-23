@@ -9,6 +9,7 @@ import "./theme.css";
 import "./App.css";
 import "./crt.css";
 import { sound } from './sound';
+import CrtFilters from "./CrtFilters";
 
 const MODES = [
   {
@@ -85,44 +86,50 @@ export default function App() {
 
   if (mode) {
     return (
-      <div className="app-shell">
-        <button className="hud-btn back-btn" onClick={goBack}>
-          &larr; Modes
-        </button>
-        {mode === "solo" && <SoloGame />}
-        {mode === "vs" && <VsGame />}
-        <SettingsButton />
-      </div>
+      <>
+        <CrtFilters />
+        <div className="app-shell">
+          <button className="hud-btn back-btn" onClick={goBack}>
+            &larr; Modes
+          </button>
+          {mode === "solo" && <SoloGame />}
+          {mode === "vs" && <VsGame />}
+          <SettingsButton />
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="app-shell">
-      <ProfileMenu />
-      <div className="wordmark">VECTOR</div>
-      <div className="tagline hud-label">select mode</div>
+    <>
+      <CrtFilters />
+      <div className="app-shell">
+        <ProfileMenu />
+        <div className="wordmark">VECTOR</div>
+        <div className="tagline hud-label">select mode</div>
 
-      <div className="mode-grid">
-        {MODES.map((m) => (
-          <button
-            key={m.id}
-            className="mode-card bracket-frame"
-            disabled={m.locked}
-            onClick={() => !m.locked && selectMode(m.id)}
-          >
-            <div className="mode-card-label">{m.label}</div>
-            <div className="mode-card-desc">{m.desc}</div>
-            {m.locked && <div className="mode-card-lock hud-label">offline</div>}
-          </button>
-        ))}
+        <div className="mode-grid">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              className="mode-card bracket-frame"
+              disabled={m.locked}
+              onClick={() => !m.locked && selectMode(m.id)}
+            >
+              <div className="mode-card-label">{m.label}</div>
+              <div className="mode-card-desc">{m.desc}</div>
+              {m.locked && <div className="mode-card-lock hud-label">offline</div>}
+            </button>
+          ))}
+        </div>
+
+        <div className="home-leaderboard bracket-frame">
+          <div className="hud-label home-leaderboard-heading">leaderboard</div>
+          <Leaderboard allowModeSwitch />
+        </div>
+
+        <SettingsButton />
       </div>
-
-      <div className="home-leaderboard bracket-frame">
-        <div className="hud-label home-leaderboard-heading">leaderboard</div>
-        <Leaderboard allowModeSwitch />
-      </div>
-
-      <SettingsButton />
-    </div>
+    </>
   );
 }
