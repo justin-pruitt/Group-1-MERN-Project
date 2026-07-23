@@ -114,10 +114,22 @@ class PongMatch {
     ball.x += ball.speedX;
     ball.y += ball.speedY;
 
-    if (ball.y - BALL_R <= WALL || ball.y + BALL_R >= HEIGHT - WALL) {
+    // Top/bottom walls — reflect position, not just velocity, so a fast
+    // ball that overshoots the wall in one tick doesn't end up resting
+    // past the boundary (which caused the "stuck in the wall" bug).
+    // Matches the same position-correction already used in SoloGame.jsx.
+    if (ball.y - BALL_R <= WALL) {
+      ball.y = WALL + BALL_R + (WALL + BALL_R - ball.y);
       ball.speedY *= -1;
       // Bleed some vertical speed into horizontal so a near-vertical ball
       // (post-flick) can't lock into a wall-to-wall loop forever.
+      const bleed = Math.abs(ball.speedY) * WALL_BLEED;
+      const dir = ball.speedX !== 0 ? Math.sign(ball.speedX) : (Math.random() < 0.5 ? 1 : -1);
+      ball.speedX += dir * bleed;
+    } else if (ball.y + BALL_R >= HEIGHT - WALL) {
+      const limit = HEIGHT - WALL - BALL_R;
+      ball.y = limit - (ball.y - limit);
+      ball.speedY *= -1;
       const bleed = Math.abs(ball.speedY) * WALL_BLEED;
       const dir = ball.speedX !== 0 ? Math.sign(ball.speedX) : (Math.random() < 0.5 ? 1 : -1);
       ball.speedX += dir * bleed;
