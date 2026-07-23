@@ -103,12 +103,23 @@ function Rally({ onGameOver }) {
       ball.x += ball.speedX * step;
       ball.y += ball.speedY * step;
 
-      if (ball.y - ball.r <= 8 || ball.y + ball.r >= canvas.height - 8) {
+      // Top/bottom walls — reflect position, not just velocity, so a
+      // large step at low fps can't leave the ball resting past the wall.
+      if (ball.y - ball.r < WALL) {
+        ball.y = WALL + ball.r + (WALL + ball.r - ball.y);
+        ball.speedY *= -1;
+        sound.play('wall');
+      } else if (ball.y + ball.r > canvas.height - WALL) {
+        const limit = canvas.height - WALL - ball.r;
+        ball.y = limit - (ball.y - limit);
         ball.speedY *= -1;
         sound.play('wall');
       }
 
-      if (ball.x + ball.r >= canvas.width - 8) {
+      // Right wall
+      if (ball.x + ball.r > canvas.width - WALL) {
+        const limit = canvas.width - WALL - ball.r;
+        ball.x = limit - (ball.x - limit);
         ball.speedX *= -1;
         sound.play('wall');
       }
