@@ -1,6 +1,8 @@
 import React, { memo, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import { sound } from "./sound";
+import { useAuth } from "./AuthContext";
+import { getInitials } from "./initials";
 import "./VsGame.css";
 
 // Must match backend/game/PongMatch.js
@@ -14,23 +16,30 @@ const BALL_R = 8;
 export default React.memo(function VsGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
+  const { user } = useAuth();
   const [phase, setPhase] = useState("idle"); // idle | waiting | playing | ended
   const [side, setSide] = useState(null);
+  const [matchup, setMatchup] = useState(null); // { you, opponent } display names from the server
   const [endInfo, setEndInfo] = useState(null);
   const [score, setScore] = useState({ left: 0, right: 0 });
+  const [authError, setAuthError] = useState(false);
 
-  // connect only while this mode is mounted
+  // connect only while this mode is mounted, and only once signed in —
+  // the server rejects unauthenticated socket connections outright (see
+  // server.js), so there's no point connecting without an account.
   useEffect(() => {
+    if (!user) return;
     socket.connect();
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     const onWaiting = () => setPhase("waiting");
-    const onMatched = ({ side }) => {
+    const onMatched = ({ side, you, opponent }) => {
       setSide(side);
+      setMatchup({ you, opponent });
       setEndInfo(null);
       setScore({ left: 0, right: 0 });
       setPhase("playing");
@@ -38,13 +47,17 @@ export default React.memo(function VsGame() {
     const onState = (state) => {
       stateRef.current = state;
     };
-    const onEnd = (score) => {
-      setEndInfo({ score });
+    const onEnd = ({ score, longestVolley }) => {
+      setEndInfo({ score, longestVolley });
       setPhase("ended");
     };
     const onOpponentLeft = () => {
       setEndInfo({ opponentLeft: true });
       setPhase("ended");
+    };
+    const onConnectError = () => {
+      setAuthError(true);
+      setPhase("idle");
     };
 
     socket.on("pong:waiting", onWaiting);
@@ -52,6 +65,7 @@ export default React.memo(function VsGame() {
     socket.on("pong:state", onState);
     socket.on("pong:end", onEnd);
     socket.on("pong:opponent_left", onOpponentLeft);
+    socket.on("connect_error", onConnectError);
 
     return () => {
       socket.off("pong:waiting", onWaiting);
@@ -59,6 +73,7 @@ export default React.memo(function VsGame() {
       socket.off("pong:state", onState);
       socket.off("pong:end", onEnd);
       socket.off("pong:opponent_left", onOpponentLeft);
+      socket.off("connect_error", onConnectError);
     };
   }, []);
 
@@ -172,40 +187,58 @@ export default React.memo(function VsGame() {
     <div className="vs-shell">
       <div className="hud-label vs-heading">vs encounter</div>
 
-      <div className="vs-status">
-        {phase === "idle" && (
-          <button className="hud-btn" onClick={findMatch}>
-            Find opponent
-          </button>
-        )}
-        {(phase === "connecting" || phase === "waiting") && <span>Scanning for an opponent…</span>}
-        {phase === "playing" && (
-          <span>
-            You are <strong className={side === "left" ? "vs-side-a" : "vs-side-b"}>{side?.toUpperCase()}</strong>
-          </span>
-        )}
-        {phase === "ended" && (
-          <>
-            <span>
-              {endInfo?.opponentLeft
-                ? "Opponent disconnected"
-                : `Final — left ${endInfo?.score?.left ?? 0} · right ${endInfo?.score?.right ?? 0}`}
-            </span>
-            <button className="hud-btn" onClick={findMatch}>
-              Find another
-            </button>
-          </>
-        )}
-      </div>
-
-      {phase === "playing" && (
-        <div className="vs-stats">
-          <span className="hud-label vs-stat-left">Left {score.left}</span>
-          <span className="hud-label vs-stat-right">Right {score.right}</span>
+      {!user ? (
+        <div className="vs-status">
+          <span>Sign in with Google to play VS mode.</span>
         </div>
-      )}
+      ) : (
+        <>
+          <div className="vs-status">
+            {phase === "idle" && (
+              <button className="hud-btn" onClick={findMatch}>
+                Find opponent
+              </button>
+            )}
+            {(phase === "connecting" || phase === "waiting") && <span>Scanning for an opponent…</span>}
+            {phase === "playing" && matchup && (
+              <span className="vs-matchup">
+                <strong className={side === "left" ? "vs-side-a" : "vs-side-b"}>
+                  {getInitials(matchup.you?.displayName)}
+                </strong>
+                <span className="vs-matchup-vs">vs</span>
+                <strong className={side === "left" ? "vs-side-b" : "vs-side-a"}>
+                  {getInitials(matchup.opponent?.displayName)}
+                </strong>
+              </span>
+            )}
+            {phase === "ended" && (
+              <>
+                <span>
+                  {endInfo?.opponentLeft
+                    ? "Opponent disconnected"
+                    : `Final — left ${endInfo?.score?.left ?? 0} · right ${endInfo?.score?.right ?? 0}`}
+                  {!endInfo?.opponentLeft && endInfo?.longestVolley ? ` · longest volley ${endInfo.longestVolley}` : ""}
+                </span>
+                <button className="hud-btn" onClick={findMatch}>
+                  Find another
+                </button>
+              </>
+            )}
+            {authError && (
+              <span className="vs-auth-error">Sign-in required — try refreshing and signing in again.</span>
+            )}
+          </div>
 
-      <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
+          {phase === "playing" && (
+            <div className="vs-stats">
+              <span className="hud-label vs-stat-left">Left {score.left}</span>
+              <span className="hud-label vs-stat-right">Right {score.right}</span>
+            </div>
+          )}
+
+          <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
+        </>
+      )}
     </div>
   );
 });

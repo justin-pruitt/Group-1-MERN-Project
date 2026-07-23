@@ -4,6 +4,7 @@ import VsGame from "./VsGame";
 import ProfileMenu from "./ProfileMenu";
 import SettingsButton from "./SettingsButton";
 import { useSettings } from "./SettingsContext";
+import { useAuth } from "./AuthContext";
 import Leaderboard from "./Leaderboard";
 import "./theme.css";
 import "./App.css";
@@ -21,12 +22,14 @@ const MODES = [
     id: "vs",
     label: "VS Encounter",
     desc: "Real-time match against another player.",
+    requiresAuth: true,
   },
   {
     id: "ai",
     label: "AI Protocol",
     desc: "Face a trained model.",
     locked: true,
+    requiresAuth: true, // not reachable yet since it's locked, but ready for when it is
   },
 ];
 
@@ -35,6 +38,7 @@ export default function App() {
   const [mode, setMode] = useState(null);
   const soundsLoaded = useRef(false);
   const { settings } = useSettings();
+  const { user } = useAuth();
 
   useEffect(() => {
     document.body.classList.toggle('crt-scanlines', settings.scanLines);
@@ -50,7 +54,7 @@ export default function App() {
       paddle: '/Assets/sfx/ball-paddle.mp3',
       click: '/Assets/sfx/menu-click.mp3',
     });
-    sound.setVolume(settings.volume);
+    sound.setVolume(settings.sfxVolume);
     sound.setMusicVolume(settings.musicVolume);
     // Browsers require a user gesture before audio can start; this runs
     // inside a click handler (selectMode/goBack), so it's a valid gesture.
@@ -70,18 +74,6 @@ export default function App() {
   const goBack = async () => {
     await handleClickSound();
     setMode(null);
-  };
-
-  const handleVolumeChange = (e) => {
-    const v = Number(e.target.value);
-    setVolume(v);
-    sound.setVolume(v);
-  };
-
-  const handleMusicVolumeChange = (e) => {
-    const v = Number(e.target.value);
-    setMusicVolume(v);
-    sound.setMusicVolume(v);
   };
 
   if (mode) {
@@ -109,18 +101,25 @@ export default function App() {
         <div className="tagline hud-label">select mode</div>
 
         <div className="mode-grid">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              className="mode-card bracket-frame"
-              disabled={m.locked}
-              onClick={() => !m.locked && selectMode(m.id)}
-            >
-              <div className="mode-card-label">{m.label}</div>
-              <div className="mode-card-desc">{m.desc}</div>
-              {m.locked && <div className="mode-card-lock hud-label">offline</div>}
-            </button>
-          ))}
+          {MODES.map((m) => {
+            const authLocked = m.requiresAuth && !user;
+            const isLocked = m.locked || authLocked;
+            return (
+              <button
+                key={m.id}
+                className="mode-card bracket-frame"
+                disabled={isLocked}
+                onClick={() => !isLocked && selectMode(m.id)}
+              >
+                <div className="mode-card-label">{m.label}</div>
+                <div className="mode-card-desc">{m.desc}</div>
+                {m.locked && <div className="mode-card-lock hud-label">offline</div>}
+                {!m.locked && authLocked && (
+                  <div className="mode-card-lock mode-card-lock-auth hud-label">sign in required</div>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         <div className="home-leaderboard bracket-frame">

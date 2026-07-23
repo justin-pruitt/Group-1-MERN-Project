@@ -1,4 +1,5 @@
 import { useAuth } from './AuthContext';
+import { getInitials } from './initials';
 import './ProfileMenu.css';
 
 export default function ProfileMenu() {
@@ -11,7 +12,9 @@ export default function ProfileMenu() {
       {user ? (
         <>
           {user.avatarUrl && <img src={user.avatarUrl} alt="" className="profile-avatar" />}
-          <span className="profile-name">{user.displayName}</span>
+          <span className="profile-name" title={user.displayName}>
+            {getInitials(user.displayName)}
+          </span>
           <button className="hud-btn" onClick={logout}>
             Sign out
           </button>

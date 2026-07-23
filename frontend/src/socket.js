@@ -4,4 +4,10 @@ import { io } from "socket.io-client";
 // the backend on :5000. In production, the Apache vhost needs to proxy
 // the /socket.io path to :5000 the same way it already proxies /api —
 // see handoff.md.
-export const socket = io({ autoConnect: false });
+//
+// withCredentials ensures the session cookie rides along on the handshake
+// (same-origin sends it automatically, but this makes it explicit and
+// keeps it working if frontend/backend ever end up on different
+// subdomains) — that cookie is what lets the server tie a VS match to an
+// actual signed-in account.
+export const socket = io({ autoConnect: false, withCredentials: true });

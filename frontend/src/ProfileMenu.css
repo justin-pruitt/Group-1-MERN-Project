@@ -8,6 +8,20 @@
   min-height: 32px;
 }
 
+/* Absolute positioning at top-right collides with the centered wordmark
+   once the viewport gets narrow enough that both can't fit on one line.
+   Below that width, drop it back into normal flow above the wordmark
+   instead (it's already first in the DOM, so no reordering needed). */
+@media (max-width: 640px) {
+  .profile-menu {
+    position: static;
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+  }
+}
+
 .profile-avatar {
   width: 24px;
   height: 24px;

@@ -13,6 +13,7 @@ export function SettingsProvider({ children }) {
   }, [user]);
 
   const updateSetting = async (key, value) => {
+    const previous = settings[key];
     setSettings((prev) => ({ ...prev, [key]: value }));
     if (!user) return; // guests: preview only, nothing to save
 
@@ -25,7 +26,7 @@ export function SettingsProvider({ children }) {
       });
       if (!res.ok) throw new Error();
     } catch {
-      setSettings((prev) => ({ ...prev, [key]: !value })); // revert on failure
+      setSettings((prev) => ({ ...prev, [key]: previous })); // revert to the actual prior value on failure
     }
   };
 
