@@ -86,7 +86,7 @@ router.post('/resend-verification', async (req, res) => {
     req.user.verificationTokenExpires = Date.now() + 24 * 60 * 60 * 1000;
     await req.user.save();
 
-    const verifyUrl = `${CLIENT_URL}/api/auth/verify-email?token=${verificationToken}`;
+    const verifyUrl = `${CLIENT_URL}api/auth/verify-email?token=${verificationToken}`;
     await sendVerificationEmail(req.user.email, verifyUrl);
 
     res.json({ success: true });
