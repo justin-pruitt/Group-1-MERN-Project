@@ -17,6 +17,8 @@ const WIN_SCORE = 7;
 const FLICK_MAX_BALL_SPEED = MAX_BALL_SPEED * 1.6; // hard flicks can briefly exceed the normal cap
 const FLICK_INFLUENCE = 0.012; // converts paddle px/sec into ball speed units — tune to taste
 const TICK_MS = 20; // 50Hz
+const SPEED_DECAY_PER_TICK = 0.985; // how fast a flick spike relaxes back to MAX_BALL_SPEED
+const WALL_BLEED = 0.08; // fraction of vertical speed bled into horizontal on wall bounce
 
 class PongMatch {
   constructor(id, leftSocketId, rightSocketId, onUpdate, onGameEnd) {
@@ -31,6 +33,11 @@ class PongMatch {
       left: this.state.paddles.left.y,
       right: this.state.paddles.right.y,
     };
+    // Current effective speed cap. Sits at MAX_BALL_SPEED normally; a flick
+    // spikes it up to FLICK_MAX_BALL_SPEED, then it decays back down every
+    // tick — this is what makes flicks a temporary burst, not a permanent
+    // speed-up.
+    this.speedCap = MAX_BALL_SPEED;
   }
 
   initialState() {
@@ -100,11 +107,20 @@ class PongMatch {
     this.prevPaddleY.left = paddles.left.y;
     this.prevPaddleY.right = paddles.right.y;
 
+    // Relax the cap back toward baseline every tick — this is what makes a
+    // flick a temporary burst instead of a permanent speed-up.
+    this.speedCap = MAX_BALL_SPEED + (this.speedCap - MAX_BALL_SPEED) * SPEED_DECAY_PER_TICK;
+
     ball.x += ball.speedX;
     ball.y += ball.speedY;
 
     if (ball.y - BALL_R <= WALL || ball.y + BALL_R >= HEIGHT - WALL) {
       ball.speedY *= -1;
+      // Bleed some vertical speed into horizontal so a near-vertical ball
+      // (post-flick) can't lock into a wall-to-wall loop forever.
+      const bleed = Math.abs(ball.speedY) * WALL_BLEED;
+      const dir = ball.speedX !== 0 ? Math.sign(ball.speedX) : (Math.random() < 0.5 ? 1 : -1);
+      ball.speedX += dir * bleed;
     }
 
     if (
@@ -116,7 +132,7 @@ class PongMatch {
     ) {
       ball.speedX = Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
       ball.speedY += paddleVelocity.left * FLICK_INFLUENCE;
-      this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
+      this.speedCap = FLICK_MAX_BALL_SPEED; // flick spike — will decay from here
       this.volley += 1;
       if (this.volley > this.longestVolley) this.longestVolley = this.volley;
     }
@@ -130,19 +146,26 @@ class PongMatch {
     ) {
       ball.speedX = -Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
       ball.speedY += paddleVelocity.right * FLICK_INFLUENCE;
-      this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
+      this.speedCap = FLICK_MAX_BALL_SPEED; // flick spike — will decay from here
       this.volley += 1;
       if (this.volley > this.longestVolley) this.longestVolley = this.volley;
     }
+
+    // Always enforce the current (possibly still-decaying) cap — this is
+    // what actually pulls the ball speed back down as speedCap shrinks,
+    // instead of just capping future growth.
+    this.clampBallSpeed(this.speedCap);
 
     if (ball.x - BALL_R <= 0) {
       score.right += 1;
       this.volley = 0;
       this.state.ball = this.freshBall(-1);
+      this.speedCap = MAX_BALL_SPEED;
     } else if (ball.x + BALL_R >= WIDTH) {
       score.left += 1;
       this.volley = 0;
       this.state.ball = this.freshBall(1);
+      this.speedCap = MAX_BALL_SPEED;
     }
 
     this.onUpdate(this.state);

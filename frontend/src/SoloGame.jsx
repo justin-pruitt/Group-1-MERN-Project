@@ -28,6 +28,8 @@ function Rally({ onGameOver }) {
     const MAX_SPEED = 20;
     const FLICK_MAX_SPEED = MAX_SPEED * 1.6; // mirrors PongMatch's FLICK_MAX_BALL_SPEED headroom
     const FLICK_INFLUENCE = 0.012; // paddle px/sec -> ball speed units; mirrors PongMatch's FLICK_INFLUENCE
+    const SPEED_DECAY_PER_TICK = 0.985; // how fast a flick spike relaxes back to MAX_SPEED; mirrors PongMatch
+    const WALL_BLEED = 0.08; // fraction of vertical speed bled into horizontal on wall bounce; mirrors PongMatch
 
     const randomLaunch = () => {
       const angle = (Math.random() * 0.6 - 0.3) * Math.PI;
@@ -42,6 +44,12 @@ function Rally({ onGameOver }) {
     };
 
     const ball = randomLaunch();
+
+    // Current effective speed cap. Sits at MAX_SPEED normally; a flick
+    // spikes it up to FLICK_MAX_SPEED, then it decays back down every
+    // frame — this is what makes flicks a temporary burst, not a
+    // permanent speed-up. Mirrors PongMatch's speedCap.
+    let speedCap = MAX_SPEED;
 
     // Max-only clamp, matching PongMatch.clampBallSpeed — no floor needed
     // now that bounces are pure reflections (magnitude-preserving) rather
@@ -101,6 +109,11 @@ function Rally({ onGameOver }) {
       const paddleVelocity = (player.y - prevPlayerY) / dt;
       prevPlayerY = player.y;
 
+      // Relax the cap back toward baseline every frame, scaled by how many
+      // reference-frames this step covers — this is what makes a flick a
+      // temporary burst instead of a permanent speed-up.
+      speedCap = MAX_SPEED + (speedCap - MAX_SPEED) * Math.pow(SPEED_DECAY_PER_TICK, step);
+
       ball.x += ball.speedX * step;
       ball.y += ball.speedY * step;
 
@@ -109,11 +122,19 @@ function Rally({ onGameOver }) {
       if (ball.y - ball.r < WALL) {
         ball.y = WALL + ball.r + (WALL + ball.r - ball.y);
         ball.speedY *= -1;
+        // Bleed some vertical speed into horizontal so a near-vertical
+        // ball (post-flick) can't lock into a wall-to-wall loop forever.
+        const bleed = Math.abs(ball.speedY) * WALL_BLEED;
+        const dir = ball.speedX !== 0 ? Math.sign(ball.speedX) : (Math.random() < 0.5 ? 1 : -1);
+        ball.speedX += dir * bleed;
         sound.play('wall');
       } else if (ball.y + ball.r > canvas.height - WALL) {
         const limit = canvas.height - WALL - ball.r;
         ball.y = limit - (ball.y - limit);
         ball.speedY *= -1;
+        const bleed = Math.abs(ball.speedY) * WALL_BLEED;
+        const dir = ball.speedX !== 0 ? Math.sign(ball.speedX) : (Math.random() < 0.5 ? 1 : -1);
+        ball.speedX += dir * bleed;
         sound.play('wall');
       }
 
@@ -134,7 +155,7 @@ function Rally({ onGameOver }) {
       ) {
         ball.speedX = Math.min(Math.abs(ball.speedX) * 1.05, MAX_SPEED);
         ball.speedY += paddleVelocity * FLICK_INFLUENCE;
-        clampSpeed(FLICK_MAX_SPEED);
+        speedCap = FLICK_MAX_SPEED; // flick spike — will decay from here
         sound.play('paddle');
 
         player.volleys += 1;
@@ -144,6 +165,11 @@ function Rally({ onGameOver }) {
           total: player.volleys + totalPointsCollected
         });
       }
+
+      // Always enforce the current (possibly still-decaying) cap — this is
+      // what actually pulls the ball speed back down as speedCap shrinks,
+      // instead of just capping future growth.
+      clampSpeed(speedCap);
 
       const distX = ball.x - cell.x;
       const distY = ball.y - cell.y;
