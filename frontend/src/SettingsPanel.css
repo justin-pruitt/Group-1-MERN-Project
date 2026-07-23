@@ -20,12 +20,11 @@
 .volume-control {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 8px;
 }
 
 .volume-control input[type="range"] {
-  width: 100px;
   accent-color: var(--signal-a);
 }
 
