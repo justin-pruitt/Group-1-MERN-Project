@@ -6,6 +6,7 @@ const MongoStore = require('connect-mongo');
 const { passport } = require('./config/passport');
 const authRoutes = require('./routes/auth');
 const leaderboardRoutes = require('./routes/leaderboard');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
 app.use(cors({ origin: process.env.CLIENT_URL || 'https://neilpena.xyz', credentials: true }));
@@ -34,6 +35,7 @@ app.get('/api/health', (req, res) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // Add real routes above this line as features get built
 // (match history, etc).

@@ -2,8 +2,11 @@ import { useState, useRef } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
 import ProfileMenu from "./ProfileMenu";
+import SettingsPanel from "./SettingsPanel";
+import { useSettings } from "./SettingsContext";
 import "./theme.css";
 import "./App.css";
+import "./crt.css";
 import { sound } from './sound';
 
 const MODES = [
@@ -30,6 +33,13 @@ export default function App() {
   const [volume, setVolume] = useState(0.8);
   const [musicVolume, setMusicVolume] = useState(0.5);
   const soundsLoaded = useRef(false);
+  const { settings } = useSettings();
+
+  useEffect(() => {
+    document.body.classList.toggle('crt-scanlines', settings.scanLines);
+    document.body.classList.toggle('crt-bulge', settings.crtBulge);
+  }, [settings.scanLines, settings.crtBulge]);
+
 
   const ensureSoundsLoaded = async () => {
     if (soundsLoaded.current) return;
@@ -121,6 +131,7 @@ export default function App() {
       <div className="wordmark">VECTOR</div>
       <div className="tagline hud-label">select mode</div>
       {VolumeSlider}
+      <SettingsPanel />
 
       <div className="mode-grid">
         {MODES.map((m) => (
