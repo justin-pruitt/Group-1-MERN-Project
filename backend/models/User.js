@@ -6,6 +6,9 @@ const userSchema = new mongoose.Schema(
     email: { type: String, required: true },
     displayName: { type: String, required: true },
     avatarUrl: { type: String },
+    emailVerified: { type: Boolean, default: false },
+    verificationToken: { type: String },
+    verificationTokenExpires: { type: Date },
     settings: {
       crtBulge: { type: Boolean, default: false },
       scanLines: { type: Boolean, default: false },

@@ -1,9 +1,12 @@
 const passport = require('passport');
+const crypto = require('crypto');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const User = require('../models/User');
+const { sendVerificationEmail } = require('./mailer');
 
 const CALLBACK_URL =
   process.env.GOOGLE_CALLBACK_URL || 'https://neilpena.xyz/api/auth/google/callback';
+const CLIENT_URL = process.env.CLIENT_URL || 'https://neilpena.xyz';
 
 let googleConfigured = false;
 
@@ -19,12 +22,23 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
         try {
           let user = await User.findOne({ googleId: profile.id });
           if (!user) {
+            const verificationToken = crypto.randomBytes(32).toString('hex');
             user = await User.create({
               googleId: profile.id,
               email: profile.emails?.[0]?.value || '',
               displayName: profile.displayName,
               avatarUrl: profile.photos?.[0]?.value,
+              verificationToken,
+              verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24h
             });
+
+            if (user.email) {
+              const verifyUrl = `${CLIENT_URL}/api/auth/verify-email?token=${verificationToken}`;
+              // Fire-and-forget — a slow/failed send shouldn't block login.
+              sendVerificationEmail(user.email, verifyUrl).catch((err) =>
+                console.error('Failed to send verification email:', err.message)
+              );
+            }
           }
           done(null, user);
         } catch (err) {
