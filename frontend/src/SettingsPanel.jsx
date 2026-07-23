@@ -54,6 +54,7 @@ export default function SettingsPanel() {
         Scan Lines
       </label>
 
+      {/* CRT Bulge disabled for now — cursor offset & performance issues
       <label className="settings-toggle">
         <input
           type="checkbox"
@@ -62,6 +63,7 @@ export default function SettingsPanel() {
         />
         CRT Bulge (cursor may appear offset)
       </label>
+      */}
 
       {!user && (
         <div className="settings-note hud-label">sign in to save these preferences</div>

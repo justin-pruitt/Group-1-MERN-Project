@@ -14,6 +14,17 @@ body.crt-scanlines::before {
     transparent 5px
   );
   background-size: 100% 5px;
+  /* Force this onto its own GPU compositor layer instead of being repainted
+     as part of the main document flow. Without this, a translucent
+     full-viewport overlay sitting on top of a 60fps canvas forces the
+     browser to recomposite the whole page every frame, which measurably
+     drops frame rate on lower-end hardware/mobile — noticeable enough
+     that it was reported as a competitive advantage (slower frames read
+     as "slow motion" to a player). This keeps the overlay static and
+     cheap to composite regardless of what's animating underneath it. */
+  will-change: transform;
+  transform: translateZ(0);
+  contain: strict;
 }
 
 body.crt-bulge #root {
@@ -31,4 +42,7 @@ body.crt-bulge::after {
     rgba(0, 0, 0, 0) 55%,
     rgba(0, 0, 0, 0.45) 100%
   );
+  will-change: transform;
+  transform: translateZ(0);
+  contain: strict;
 }

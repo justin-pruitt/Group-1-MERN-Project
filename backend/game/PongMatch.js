@@ -44,6 +44,14 @@ class PongMatch {
     };
   }
 
+  // volley = consecutive paddle touches since the last point, shared
+  // between both players since it's a joint rally stat, not a per-player
+  // one. longestVolley is the high-water mark across the whole match —
+  // that's what gets submitted to the VS leaderboard on game end, so the
+  // longest *rallies* rank the board rather than raw win/loss score.
+  volley = 0;
+  longestVolley = 0;
+
   freshBall(direction) {
     return {
       x: WIDTH / 2,
@@ -109,6 +117,8 @@ class PongMatch {
       ball.speedX = Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
       ball.speedY += paddleVelocity.left * FLICK_INFLUENCE;
       this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
+      this.volley += 1;
+      if (this.volley > this.longestVolley) this.longestVolley = this.volley;
     }
 
     if (
@@ -121,13 +131,17 @@ class PongMatch {
       ball.speedX = -Math.min(Math.abs(ball.speedX) * 1.05, MAX_BALL_SPEED);
       ball.speedY += paddleVelocity.right * FLICK_INFLUENCE;
       this.clampBallSpeed(FLICK_MAX_BALL_SPEED);
+      this.volley += 1;
+      if (this.volley > this.longestVolley) this.longestVolley = this.volley;
     }
 
     if (ball.x - BALL_R <= 0) {
       score.right += 1;
+      this.volley = 0;
       this.state.ball = this.freshBall(-1);
     } else if (ball.x + BALL_R >= WIDTH) {
       score.left += 1;
+      this.volley = 0;
       this.state.ball = this.freshBall(1);
     }
 
@@ -135,7 +149,7 @@ class PongMatch {
 
     if (score.left >= WIN_SCORE || score.right >= WIN_SCORE) {
       this.stop();
-      this.onGameEnd(score);
+      this.onGameEnd(score, this.longestVolley);
     }
   }
 }

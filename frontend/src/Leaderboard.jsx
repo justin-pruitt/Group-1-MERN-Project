@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { getInitials } from './initials';
 import './Leaderboard.css';
 
 // Shared leaderboard widget. Used both on the post-game screen (locked to
@@ -71,7 +72,9 @@ export default function Leaderboard({ mode = 'solo', refreshKey, allowModeSwitch
           {scores.map((entry, i) => (
             <li key={entry._id} className="leaderboard-row">
               <span className="leaderboard-rank hud-label">{i + 1}</span>
-              <span className="leaderboard-name">{entry.displayName}</span>
+              <span className="leaderboard-name" title={entry.displayName}>
+                {getInitials(entry.displayName)}
+              </span>
               <span className="leaderboard-score">{entry.score}</span>
             </li>
           ))}

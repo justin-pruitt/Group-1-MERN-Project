@@ -28,6 +28,24 @@
   color: var(--signal-b);
 }
 
+.vs-matchup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+.vs-matchup-vs {
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.vs-auth-error {
+  color: var(--danger);
+}
+
 .vs-stats {
   display: flex;
   align-items: baseline;
