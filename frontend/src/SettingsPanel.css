@@ -1,0 +1,47 @@
+.settings-panel {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.settings-toggle input[type="checkbox"] {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--edge);
+  border-radius: 2px;
+  background: var(--panel-raised);
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+  transition: border-color 0.15s ease;
+}
+
+.settings-toggle input[type="checkbox"]:hover {
+  border-color: var(--signal-a);
+}
+
+.settings-toggle input[type="checkbox"]:checked {
+  border-color: var(--signal-a);
+  background: var(--signal-a);
+}
+
+.settings-toggle input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--void);
+  border-radius: 1px;
+}
+
+.settings-note {
+  color: var(--text-dim);
+}
