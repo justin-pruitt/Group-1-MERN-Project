@@ -85,6 +85,25 @@ describe('getCommentary', () => {
     expect(warnSpy).toHaveBeenCalledTimes(1); // one clear log line, not one per skipped call
   });
 
+  it('sends the API key via the x-goog-api-key header, not a query param', async () => {
+    // Query-param auth (?key=...) has been reported to fail for newer
+    // "AQ." format keys even when the key itself is valid — the header
+    // is Google's documented method and works for both key formats.
+    process.env.GEMINI_API_KEY = 'AQ.Ab-test-key';
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Line.' }] } }] }),
+    });
+    const { getCommentary } = freshCommentary();
+
+    await getCommentary('match_start', {});
+
+    const [url, options] = global.fetch.mock.calls[0];
+    expect(url).not.toContain('key=AQ.Ab-test-key');
+    expect(options.headers['x-goog-api-key']).toBe('AQ.Ab-test-key');
+  });
+
   it('falls back gracefully on a network error without throwing', async () => {
     process.env.GEMINI_API_KEY = 'test-key';
     global.fetch.mockRejectedValue(new Error('network down'));

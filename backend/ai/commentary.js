@@ -75,9 +75,14 @@ async function callGemini(prompt, apiKey) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(`${GEMINI_URL}?key=${apiKey}`, {
+    // Sent via the x-goog-api-key header rather than a ?key= query
+    // param — this is Google's documented method regardless of key
+    // format, and newer "AQ." style keys (as opposed to the older
+    // "AIza" format) have been reported to work reliably here but not
+    // always as a query param.
+    const res = await fetch(GEMINI_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: { maxOutputTokens: 40, temperature: 0.9 },
