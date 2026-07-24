@@ -117,7 +117,7 @@ async function callGemini(prompt, apiKey) {
           // 'minimal' — the lowest level Flash supports — that's not a
           // guaranteed zero, so keep real headroom above what a ~12-word
           // line needs (well under 100 tokens) rather than cutting it close.
-          maxOutputTokens: 1000,
+          maxOutputTokens: 10000,
           temperature: 0.9,
           thinkingConfig: buildThinkingConfig(GEMINI_MODEL),
         },
