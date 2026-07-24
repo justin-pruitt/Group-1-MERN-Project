@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import SoloGame from "./SoloGame";
 import VsGame from "./VsGame";
+import AiGame from "./AiGame";
 import ProfileMenu from "./ProfileMenu";
 import SettingsButton from "./SettingsButton";
 import { useSettings } from "./SettingsContext";
@@ -28,8 +29,7 @@ const MODES = [
     id: "ai",
     label: "AI Protocol",
     desc: "Face a trained model.",
-    locked: true,
-    requiresAuth: true, // not reachable yet since it's locked, but ready for when it is
+    requiresAuth: true,
   },
 ];
 
@@ -86,6 +86,7 @@ export default function App() {
           </button>
           {mode === "solo" && <SoloGame />}
           {mode === "vs" && <VsGame />}
+          {mode === "ai" && <AiGame />}
           <SettingsButton />
         </div>
       </>

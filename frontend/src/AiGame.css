@@ -1,0 +1,118 @@
+.ai-shell {
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+}
+
+.ai-heading {
+  text-align: center;
+  margin-bottom: 16px;
+}
+
+.ai-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  min-height: 32px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.ai-side-you {
+  color: var(--signal-a);
+}
+.ai-side-agent {
+  color: var(--signal-b);
+}
+
+.ai-matchup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+.ai-matchup-vs {
+  color: var(--text-dim);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.ai-auth-error {
+  color: var(--danger);
+}
+
+.ai-stats {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 4px 10px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ai-stat-left {
+  color: var(--signal-a);
+}
+
+.ai-stat-right {
+  color: var(--signal-b);
+}
+
+.ai-canvas-wrap {
+  position: relative;
+}
+
+.ai-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  background: var(--panel);
+  touch-action: none;
+}
+
+/* Commentary bubble, anchored near the agent's paddle (top-right). */
+.ai-say {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  max-width: min(60%, 320px);
+  padding: 8px 12px;
+  background: var(--panel-raised);
+  border-color: var(--signal-b);
+  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 12px;
+  line-height: 1.4;
+  letter-spacing: 0.02em;
+  animation: ai-say-in 0.2s ease;
+}
+
+.ai-say::before,
+.ai-say::after {
+  border-color: var(--signal-b);
+}
+
+@keyframes ai-say-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 640px) {
+  .ai-say {
+    max-width: 80%;
+    font-size: 11px;
+  }
+}

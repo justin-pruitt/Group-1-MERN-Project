@@ -3,6 +3,7 @@ const { Server } = require('socket.io');
 const app = require('./app');
 const { connectDB } = require('./db');
 const { attachPongHandlers } = require('./game/matchmaking');
+const { attachAiHandlers } = require('./game/aiMatchmaking');
 const { sessionMiddleware } = require('./config/session');
 const { passport } = require('./config/passport');
 
@@ -27,6 +28,7 @@ io.use((socket, next) => {
 });
 
 attachPongHandlers(io);
+attachAiHandlers(io);
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, '0.0.0.0', () => {
