@@ -85,7 +85,21 @@ async function callGemini(prompt, apiKey) {
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { maxOutputTokens: 40, temperature: 0.9 },
+        generationConfig: {
+          // gemini-3.5-flash (like the 2.5/3.x flash line generally) is a
+          // thinking model with reasoning ON by default. Thinking tokens
+          // are counted against the SAME maxOutputTokens budget as the
+          // visible reply, so a low cap (40) gets fully consumed by
+          // internal reasoning and the API returns finishReason:
+          // "MAX_TOKENS" with an empty text field — no error, just
+          // nothing to say. Force thinking off since a one-line quip
+          // needs zero reasoning, and give a little headroom above the
+          // bare minimum in case the model still emits a few thought
+          // tokens before honoring the budget.
+          maxOutputTokens: 80,
+          temperature: 0.9,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
       signal: controller.signal,
     });
@@ -96,7 +110,16 @@ async function callGemini(prompt, apiKey) {
     }
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    if (!text) return { error: `empty response — ${JSON.stringify(data).slice(0, 300)}` };
+    if (!text) {
+      // Surface finishReason explicitly — "MAX_TOKENS" here almost always
+      // means thinking tokens ate the whole budget (see thinkingConfig
+      // above), which otherwise looks identical in the logs to a bad
+      // key or a dead model name.
+      const finishReason = data?.candidates?.[0]?.finishReason;
+      return {
+        error: `empty response (finishReason: ${finishReason || 'unknown'}) — ${JSON.stringify(data).slice(0, 300)}`,
+      };
+    }
     return { text };
   } finally {
     clearTimeout(timeout);
