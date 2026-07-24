@@ -133,4 +133,72 @@ describe('getCommentary', () => {
     expect(errorSpy).toHaveBeenCalledTimes(1);
     expect(errorSpy.mock.calls[0][0]).toMatch(/404/);
   });
+
+  it('sends thinkingLevel (not thinkingBudget) for a Gemini 3.x model', async () => {
+    // Regression test: Gemini 3.x doesn't honor thinkingBudget (that's a
+    // 2.5-series-only field) — sending it alone is a silent no-op, and
+    // the model quietly keeps its own default ('medium' for 3.5 Flash),
+    // which burns most of maxOutputTokens on thinking exactly like having
+    // no config at all. This is what caused commentary to keep falling
+    // back to canned lines even after thinkingBudget: 0 was added.
+    process.env.GEMINI_API_KEY = 'test-key';
+    process.env.GEMINI_MODEL = 'gemini-3.5-flash';
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Line.' }] } }] }),
+    });
+    const { getCommentary } = freshCommentary();
+
+    await getCommentary('match_start', {});
+
+    const [, options] = global.fetch.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingLevel: 'minimal' });
+  });
+
+  it('sends thinkingBudget: 0 for a Gemini 2.5 model', async () => {
+    // If GEMINI_MODEL is ever rolled back to a 2.5-series model (e.g.
+    // during another deprecation scramble), that generation DOES support
+    // a true zero thinking budget via thinkingBudget, not thinkingLevel.
+    process.env.GEMINI_API_KEY = 'test-key';
+    process.env.GEMINI_MODEL = 'gemini-2.5-flash';
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ candidates: [{ content: { parts: [{ text: 'Line.' }] } }] }),
+    });
+    const { getCommentary } = freshCommentary();
+
+    await getCommentary('match_start', {});
+
+    const [, options] = global.fetch.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.generationConfig.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  });
+
+  it('includes finishReason and thinking-token counts when Gemini returns an empty candidate', async () => {
+    // Regression test: MAX_TOKENS-with-empty-text used to log as an
+    // opaque "empty response" — indistinguishable from a malformed
+    // response for any other reason. The token breakdown is what
+    // actually proves "thinking ate the budget" instead of leaving it
+    // to be inferred.
+    process.env.GEMINI_API_KEY = 'test-key';
+    global.fetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [] }, finishReason: 'MAX_TOKENS' }],
+        usageMetadata: { thoughtsTokenCount: 300, candidatesTokenCount: 0 },
+      }),
+    });
+    const { getCommentary } = freshCommentary();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const line = await getCommentary('match_start', {});
+
+    expect(typeof line).toBe('string');
+    expect(errorSpy.mock.calls[0][0]).toMatch(/MAX_TOKENS/);
+    expect(errorSpy.mock.calls[0][0]).toMatch(/thoughtsTokenCount: 300/);
+  });
 });

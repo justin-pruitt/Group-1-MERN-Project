@@ -11,7 +11,32 @@
 // if this drifts out of date again.
 const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
-const REQUEST_TIMEOUT_MS = 4000;
+// A bit more generous than a plain text-completion call would need —
+// even 'minimal' thinking adds some latency on top of generation time,
+// and this is fire-and-forget commentary (see aiMatchmaking.js), not
+// something blocking gameplay, so it's cheap to give it more rope
+// before falling back.
+const REQUEST_TIMEOUT_MS = 6000;
+
+// gemini-3.5-flash is a Gemini 3.x-series model. Gemini 3.x does NOT use
+// the `thinkingBudget` (raw token count) field — that's a Gemini 2.5-only
+// knob. Gemini 3.x uses `thinkingLevel` ('minimal' | 'low' | 'medium' |
+// 'high') instead; thinkingBudget is merely "accepted for backwards
+// compatibility" on Gemini 3 and has no documented effect on Flash, so
+// sending it alone (as an earlier fix here did) is a no-op — the model
+// just keeps its own default ('medium' for 3.5 Flash), which is exactly
+// as expensive, thinking-token-wise, as having no config at all. If
+// GEMINI_MODEL ever gets overridden back to a 2.5-series model, that one
+// *does* want thinkingBudget, so pick the right field for whichever
+// model is actually configured rather than hardcoding one.
+function buildThinkingConfig(model) {
+  if (/^gemini-3/.test(model)) {
+    // 'minimal' is the lowest level Flash/Flash-Lite support — Gemini 3
+    // Flash models can't fully disable thinking, only get close to it.
+    return { thinkingLevel: 'minimal' };
+  }
+  return { thinkingBudget: 0 }; // true zero budget, supported on 2.5 Flash
+}
 
 // Self-throttling so a burst of match events (several concurrent
 // matches, or a fast rally with several points close together) can't
@@ -86,19 +111,15 @@ async function callGemini(prompt, apiKey) {
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
         generationConfig: {
-          // gemini-3.5-flash (like the 2.5/3.x flash line generally) is a
-          // thinking model with reasoning ON by default. Thinking tokens
-          // are counted against the SAME maxOutputTokens budget as the
-          // visible reply, so a low cap (40) gets fully consumed by
-          // internal reasoning and the API returns finishReason:
-          // "MAX_TOKENS" with an empty text field — no error, just
-          // nothing to say. Force thinking off since a one-line quip
-          // needs zero reasoning, and give a little headroom above the
-          // bare minimum in case the model still emits a few thought
-          // tokens before honoring the budget.
-          maxOutputTokens: 80,
+          // Thinking tokens are counted against the SAME maxOutputTokens
+          // budget as the visible reply (confirmed still true for Gemini
+          // 3 in Google's own tracker, not just legacy 2.5). Even at
+          // 'minimal' — the lowest level Flash supports — that's not a
+          // guaranteed zero, so keep real headroom above what a ~12-word
+          // line needs (well under 100 tokens) rather than cutting it close.
+          maxOutputTokens: 300,
           temperature: 0.9,
-          thinkingConfig: { thinkingBudget: 0 },
+          thinkingConfig: buildThinkingConfig(GEMINI_MODEL),
         },
       }),
       signal: controller.signal,
@@ -111,13 +132,19 @@ async function callGemini(prompt, apiKey) {
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) {
-      // Surface finishReason explicitly — "MAX_TOKENS" here almost always
-      // means thinking tokens ate the whole budget (see thinkingConfig
-      // above), which otherwise looks identical in the logs to a bad
-      // key or a dead model name.
+      // Surface finishReason AND the token breakdown explicitly —
+      // "MAX_TOKENS" with thoughtsTokenCount near/at maxOutputTokens is
+      // the fingerprint of thinking eating the whole budget (see
+      // thinkingConfig above); without the numbers this looks identical
+      // in the logs to a bad key or a dead model name.
       const finishReason = data?.candidates?.[0]?.finishReason;
+      const thoughtsTokens = data?.usageMetadata?.thoughtsTokenCount;
+      const outputTokens = data?.usageMetadata?.candidatesTokenCount;
       return {
-        error: `empty response (finishReason: ${finishReason || 'unknown'}) — ${JSON.stringify(data).slice(0, 300)}`,
+        error:
+          `empty response (finishReason: ${finishReason || 'unknown'}, ` +
+          `thoughtsTokenCount: ${thoughtsTokens ?? 'n/a'}, candidatesTokenCount: ${outputTokens ?? 'n/a'}) — ` +
+          `${JSON.stringify(data).slice(0, 300)}`,
       };
     }
     return { text };
@@ -140,8 +167,27 @@ function logGeminiError(message) {
   console.error(`Gemini commentary request failed (model: ${GEMINI_MODEL}): ${message}`);
 }
 
+// One-time, redacted startup diagnostic. The single biggest source of
+// "why is it always falling back?" confusion is that a missing/empty
+// GEMINI_API_KEY produces *zero* log output (see the early return
+// below) — completely silent, identical-looking to Gemini being down.
+// This makes the two cases distinguishable from pm2 logs alone, without
+// ever printing the actual key.
+let hasLoggedKeyStatus = false;
+function logKeyStatusOnce() {
+  if (hasLoggedKeyStatus) return;
+  hasLoggedKeyStatus = true;
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    console.warn('AI Protocol commentary: GEMINI_API_KEY is not set — fallback lines only, Gemini will never be called.');
+  } else {
+    console.log(`AI Protocol commentary: GEMINI_API_KEY detected (starts with "${apiKey.slice(0, 4)}…"), model=${GEMINI_MODEL}.`);
+  }
+}
+
 // event: 'match_start' | 'ai_scored' | 'human_scored' | 'match_end_win' | 'match_end_loss'
 async function getCommentary(event, context = {}) {
+  logKeyStatusOnce();
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return fallbackLine(event);
 
