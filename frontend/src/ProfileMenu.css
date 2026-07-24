@@ -32,7 +32,7 @@
 .profile-name {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 13px;
-  color: var(--text-dim, #6b7694);
+  color: var(--text-dim, #8792ac);
 }
 
 .profile-signin {
