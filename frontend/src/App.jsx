@@ -1,7 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import SoloGame from "./SoloGame";
-import VsGame from "./VsGame";
-import AiGame from "./AiGame";
+import { useState, useRef, useEffect, lazy, Suspense } from "react";
 import ProfileMenu from "./ProfileMenu";
 import SettingsButton from "./SettingsButton";
 import { useSettings } from "./SettingsContext";
@@ -12,6 +9,11 @@ import "./App.css";
 import "./crt.css";
 import { sound } from './sound';
 import CrtFilters from "./CrtFilters";
+
+// lazy load gameplay to avoid loading game code until a mode is selected
+const SoloGame = lazy(() => import("./SoloGame"));
+const VsGame = lazy(() => import("./VsGame"));
+const AiGame = lazy(() => import("./AiGame"));
 
 const MODES = [
   {
@@ -42,8 +44,7 @@ export default function App() {
 
   useEffect(() => {
     document.body.classList.toggle('crt-scanlines', settings.scanLines);
-    document.body.classList.toggle('crt-bulge', settings.crtBulge);
-  }, [settings.scanLines, settings.crtBulge]);
+  }, [settings.scanLines]);
 
 
   const ensureSoundsLoaded = async () => {
@@ -84,9 +85,11 @@ export default function App() {
           <button className="hud-btn back-btn" onClick={goBack}>
             &larr; Modes
           </button>
-          {mode === "solo" && <SoloGame />}
-          {mode === "vs" && <VsGame />}
-          {mode === "ai" && <AiGame />}
+          <Suspense fallback={<div className="hud-label">loading…</div>}>
+            {mode === "solo" && <SoloGame />}
+            {mode === "vs" && <VsGame />}
+            {mode === "ai" && <AiGame />}
+          </Suspense>
           <SettingsButton />
         </div>
       </>
