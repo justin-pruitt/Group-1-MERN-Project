@@ -4,7 +4,12 @@
 // instead of crashing the app — matches still run fine without it, they
 // just fall back to a small set of canned lines.
 
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// gemini-2.5-flash is being retired ahead of its official Oct 2026
+// shutdown date for some accounts — Google's own forum has reports of
+// "model is no longer available" errors well before that date. Default
+// to a current-generation GA model instead; override via GEMINI_MODEL
+// if this drifts out of date again.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const REQUEST_TIMEOUT_MS = 4000;
 
@@ -14,7 +19,7 @@ const REQUEST_TIMEOUT_MS = 4000;
 // a workaround for a code bug elsewhere — commentary is a nice-to-have,
 // so under load it should quietly drop to fallback lines instead of
 // hammering Gemini and eating into everyone else's quota too.
-const MIN_MS_BETWEEN_CALLS = 10000; // hard floor on request rate, regardless of tier
+const MIN_MS_BETWEEN_CALLS = 2000; // hard floor on request rate, regardless of tier
 let lastCallAt = 0;
 
 // Circuit breaker: once Gemini itself tells us we're rate-limited (429),
@@ -59,10 +64,13 @@ function buildPrompt(event, context) {
     .join(' ');
 }
 
-// Returns { text } on success, or { rateLimited: true } / { text: null }
-// on failure — the caller decides what to do (fall back), this function
-// just reports what actually happened instead of collapsing every
-// failure into the same silent null.
+// Returns { text } on success, or { rateLimited: true } / { error } on
+// failure — the caller decides what to do (fall back either way), but
+// now every failure reports *why*, not just 429s. Previously any
+// non-429 failure (wrong/deprecated model name, bad key, 5xx, etc.)
+// silently returned null with zero trace in the logs — meaning a
+// permanently broken model name would fall back to canned lines forever
+// and look identical to "no API key configured."
 async function callGemini(prompt, apiKey) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -77,13 +85,31 @@ async function callGemini(prompt, apiKey) {
       signal: controller.signal,
     });
     if (res.status === 429) return { rateLimited: true };
-    if (!res.ok) return { text: null };
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      return { error: `HTTP ${res.status}${body ? ` — ${body.slice(0, 300)}` : ''}` };
+    }
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    return { text: text || null };
+    if (!text) return { error: `empty response — ${JSON.stringify(data).slice(0, 300)}` };
+    return { text };
   } finally {
     clearTimeout(timeout);
   }
+}
+
+// Throttles repeated identical error logs so a sustained outage doesn't
+// spam the console once per match event, while still making the
+// *first* occurrence (and the first after it changes) immediately
+// visible — that first line is what you'd grep for in the logs.
+let lastLoggedError = null;
+let lastErrorLogAt = 0;
+function logGeminiError(message) {
+  const now = Date.now();
+  if (message === lastLoggedError && now - lastErrorLogAt < 60000) return;
+  lastLoggedError = message;
+  lastErrorLogAt = now;
+  console.error(`Gemini commentary request failed (model: ${GEMINI_MODEL}): ${message}`);
 }
 
 // event: 'match_start' | 'ai_scored' | 'human_scored' | 'match_end_win' | 'match_end_loss'
@@ -106,10 +132,13 @@ async function getCommentary(event, context = {}) {
       );
       return fallbackLine(event);
     }
-    if (!result.text) return fallbackLine(event);
+    if (result.error) {
+      logGeminiError(result.error);
+      return fallbackLine(event);
+    }
     return result.text.replace(/^["']|["']$/g, '').slice(0, 140);
   } catch (err) {
-    console.error('Gemini commentary failed:', err.message);
+    logGeminiError(err.message);
     return fallbackLine(event);
   }
 }

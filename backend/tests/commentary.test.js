@@ -92,4 +92,26 @@ describe('getCommentary', () => {
 
     await expect(getCommentary('match_start', {})).resolves.toEqual(expect.any(String));
   });
+
+  it('logs a diagnosable error for non-429 failures instead of silently swallowing them', async () => {
+    // Regression test: a deprecated/invalid model name, bad API key, or
+    // any other non-429 failure used to return null with zero log
+    // output — indistinguishable from "no API key configured" and
+    // permanently invisible. This is exactly what happened when
+    // gemini-2.5-flash was retired out from under this app.
+    process.env.GEMINI_API_KEY = 'test-key';
+    global.fetch.mockResolvedValue({
+      ok: false,
+      status: 404,
+      text: async () => '{"error":{"message":"model not found"}}',
+    });
+    const { getCommentary } = freshCommentary();
+    const errorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    const line = await getCommentary('match_start', {});
+
+    expect(typeof line).toBe('string'); // still degrades gracefully
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    expect(errorSpy.mock.calls[0][0]).toMatch(/404/);
+  });
 });
