@@ -8,6 +8,22 @@ const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 const REQUEST_TIMEOUT_MS = 4000;
 
+// Self-throttling so a burst of match events (several concurrent
+// matches, or a fast rally with several points close together) can't
+// fire more requests than the API tier allows. This is a real fix, not
+// a workaround for a code bug elsewhere — commentary is a nice-to-have,
+// so under load it should quietly drop to fallback lines instead of
+// hammering Gemini and eating into everyone else's quota too.
+const MIN_MS_BETWEEN_CALLS = 10000; // hard floor on request rate, regardless of tier
+let lastCallAt = 0;
+
+// Circuit breaker: once Gemini itself tells us we're rate-limited (429),
+// stop trying for a cooldown window instead of retrying on the very next
+// event and getting rate-limited again. One log line on the transition
+// so it's diagnosable without spamming the console on every skipped call.
+const COOLDOWN_MS = 60000;
+let cooldownUntil = 0;
+
 const FALLBACK_LINES = {
   match_start: ['Protocol online. Let\'s see what you\'ve got.', 'Model loaded. Serve when ready.'],
   ai_scored: ['Point logged.', 'As modeled.', 'Trajectory confirmed.'],
@@ -43,6 +59,10 @@ function buildPrompt(event, context) {
     .join(' ');
 }
 
+// Returns { text } on success, or { rateLimited: true } / { text: null }
+// on failure — the caller decides what to do (fall back), this function
+// just reports what actually happened instead of collapsing every
+// failure into the same silent null.
 async function callGemini(prompt, apiKey) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -56,10 +76,11 @@ async function callGemini(prompt, apiKey) {
       }),
       signal: controller.signal,
     });
-    if (!res.ok) return null;
+    if (res.status === 429) return { rateLimited: true };
+    if (!res.ok) return { text: null };
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-    return text || null;
+    return { text: text || null };
   } finally {
     clearTimeout(timeout);
   }
@@ -70,10 +91,23 @@ async function getCommentary(event, context = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return fallbackLine(event);
 
+  const now = Date.now();
+  if (now < cooldownUntil) return fallbackLine(event); // breaker is open, skip Gemini entirely
+  if (now - lastCallAt < MIN_MS_BETWEEN_CALLS) return fallbackLine(event); // self-throttle
+  lastCallAt = now;
+
   try {
-    const text = await callGemini(buildPrompt(event, context), apiKey);
-    if (!text) return fallbackLine(event);
-    return text.replace(/^["']|["']$/g, '').slice(0, 140);
+    const result = await callGemini(buildPrompt(event, context), apiKey);
+
+    if (result.rateLimited) {
+      cooldownUntil = Date.now() + COOLDOWN_MS;
+      console.warn(
+        `Gemini rate-limited (429) — pausing AI Protocol commentary for ${COOLDOWN_MS / 1000}s, using fallback lines until then.`
+      );
+      return fallbackLine(event);
+    }
+    if (!result.text) return fallbackLine(event);
+    return result.text.replace(/^["']|["']$/g, '').slice(0, 140);
   } catch (err) {
     console.error('Gemini commentary failed:', err.message);
     return fallbackLine(event);

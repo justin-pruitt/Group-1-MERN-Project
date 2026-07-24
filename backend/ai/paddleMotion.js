@@ -16,4 +16,22 @@ function stepPaddleTowardTarget(currentY, desiredY, maxSpeedPerTick = AI_MAX_SPE
   return currentY + Math.sign(delta) * maxSpeedPerTick;
 }
 
-module.exports = { stepPaddleTowardTarget, AI_MAX_SPEED_PER_TICK };
+// Low-pass filter on the *desired* target, applied before stepPaddleTowardTarget.
+// The speed cap above only limits how fast the paddle can chase a
+// target — it does nothing to stop the target itself from flip-flopping
+// between two nearby points every tick, which is what produces visible
+// vibration (the paddle snapping at max speed back and forth) instead of
+// one clean motion. Smoothing the target directly is what actually fixes
+// that, structurally, regardless of what the raw network outputs.
+const TARGET_SMOOTHING_ALPHA = 0.3; // fraction of the way to the new raw target each tick
+
+function smoothTarget(prevSmoothed, rawTarget, alpha = TARGET_SMOOTHING_ALPHA) {
+  return prevSmoothed + (rawTarget - prevSmoothed) * alpha;
+}
+
+module.exports = {
+  stepPaddleTowardTarget,
+  smoothTarget,
+  AI_MAX_SPEED_PER_TICK,
+  TARGET_SMOOTHING_ALPHA,
+};

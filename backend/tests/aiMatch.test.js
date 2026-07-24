@@ -35,6 +35,37 @@ describe('AiMatch', () => {
     expect(maxJump).toBeLessThanOrEqual(AI_MAX_SPEED_PER_TICK + 0.001);
   });
 
+  it('does not vibrate — direction reversals stay low over a sustained run', () => {
+    // Regression test: without target smoothing, the raw network output
+    // can flip between two nearby values every tick, and the paddle
+    // visibly vibrates back and forth at max speed instead of tracking
+    // smoothly. This counts genuine direction changes over 4 sim-seconds
+    // and asserts it stays well below "every tick" (which would be ~200
+    // reversals over this window).
+    const match = new AiMatch('t1c', 'human', () => {});
+    let prevY = match.state.paddles.right.y;
+    let prevSign = 0;
+    let reversals = 0;
+    const TICKS = 200; // 4 simulated seconds at 50Hz
+
+    for (let i = 0; i < TICKS; i++) {
+      match.tick();
+      const y = match.state.paddles.right.y;
+      const delta = y - prevY;
+      if (Math.abs(delta) > 0.5) {
+        const sign = Math.sign(delta);
+        if (prevSign !== 0 && sign !== prevSign) reversals += 1;
+        prevSign = sign;
+      }
+      prevY = y;
+    }
+
+    // A real rally reverses direction sometimes (the ball bounces), but
+    // nowhere near every tick — this threshold is well above normal
+    // tracking behavior and well below vibration.
+    expect(reversals).toBeLessThan(30);
+  });
+
   it('still lets the human-controlled left paddle move normally', () => {
     const match = new AiMatch('t2', 'human', () => {});
     match.setPaddleTarget('left', 200);

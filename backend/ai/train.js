@@ -16,7 +16,7 @@ const path = require('path');
 const { PongMatch, HEIGHT, PADDLE_H } = require('../game/PongMatch');
 const { Network } = require('./network');
 const { extractFeatures, FEATURE_SIZE } = require('./features');
-const { stepPaddleTowardTarget } = require('./paddleMotion');
+const { stepPaddleTowardTarget, smoothTarget } = require('./paddleMotion');
 
 const HIDDEN_SIZE = 12;
 const OUTPUT_SIZE = 1;
@@ -72,6 +72,13 @@ function playMatch(network, opp) {
   let agentHitSpeedSum = 0;
   let prevVolley = 0;
 
+  // Mirrors AiMatch.js exactly — same smoothed-target state, same motion
+  // model — so the trained weights transfer unchanged into a real match.
+  let smoothedCenter = match.state.paddles.right.y + PADDLE_H / 2;
+  let prevSmoothedCenter = smoothedCenter;
+  let prevMoveSign = 0;
+  let reversalCount = 0;
+
   match.onGameEnd = () => {
     ended = true;
   };
@@ -82,10 +89,25 @@ function playMatch(network, opp) {
 
     const features = extractFeatures(match.state, 'right');
     const [out] = network.forward(features);
-    const desiredCenter = ((out + 1) / 2) * HEIGHT;
+    const rawTargetCenter = ((out + 1) / 2) * HEIGHT;
+    smoothedCenter = smoothTarget(smoothedCenter, rawTargetCenter);
+
     const currentCenter = match.state.paddles.right.y + PADDLE_H / 2;
-    const nextCenter = stepPaddleTowardTarget(currentCenter, desiredCenter);
+    const nextCenter = stepPaddleTowardTarget(currentCenter, smoothedCenter);
     match.setPaddleTarget('right', nextCenter - PADDLE_H / 2);
+
+    // Direction-reversal penalty: counts genuine back-and-forth
+    // vibration (many sign flips in a short span), not the occasional
+    // reversal a real rally naturally needs when the ball changes
+    // direction. Measured on the *smoothed* target so legitimate fast
+    // tracking isn't penalized, only leftover chatter after smoothing.
+    const moveDelta = smoothedCenter - prevSmoothedCenter;
+    if (Math.abs(moveDelta) > 0.5) {
+      const moveSign = Math.sign(moveDelta);
+      if (prevMoveSign !== 0 && moveSign !== prevMoveSign) reversalCount += 1;
+      prevMoveSign = moveSign;
+    }
+    prevSmoothedCenter = smoothedCenter;
 
     match.tick();
     ticks += 1;
@@ -104,13 +126,17 @@ function playMatch(network, opp) {
   const finalScore = match.state.score;
   // Win/loss margin dominates. Longest volley and hit-speed are smaller
   // shaping bonuses — reward actually rallying and hitting with
-  // conviction, not just grinding out a win. Timing out at the tick cap
-  // (rare, mostly early on) gets a small penalty so stalling isn't free.
+  // conviction, not just grinding out a win. The jitter penalty pushes
+  // against wasted back-and-forth vibration specifically (not against
+  // movement in general — see the reversal-counting comment above).
+  // Timing out at the tick cap (rare, mostly early on) gets a small
+  // penalty so stalling isn't free.
   const timedOut = !ended ? -5 : 0;
   return (
     (finalScore.right - finalScore.left) * 25 +
     match.longestVolley * 2 +
-    agentHitSpeedSum * 0.4 +
+    agentHitSpeedSum * 0.4 -
+    reversalCount * 0.3 +
     timedOut
   );
 }
