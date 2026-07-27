@@ -77,4 +77,15 @@
   touch-action: none;
 }
 
-
+.vs-target-score {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
