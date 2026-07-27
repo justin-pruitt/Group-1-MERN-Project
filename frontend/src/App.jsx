@@ -108,7 +108,13 @@ export default function App() {
 
         <div className="mode-grid">
           {MODES.map((m) => {
-            const authLocked = m.requiresAuth && !user;
+            const signInLocked = m.requiresAuth && !user;
+            // Signed in but hasn't clicked the email verification link yet —
+            // gate VS/AI the same way signed-out users are gated, distinct
+            // message so it's clear what to do next (see ProfileMenu's
+            // "Verify your email" resend button).
+            const verifyLocked = m.requiresAuth && !!user && !user.emailVerified;
+            const authLocked = signInLocked || verifyLocked;
             const isLocked = m.locked || authLocked;
             return (
               <button
@@ -120,8 +126,11 @@ export default function App() {
                 <div className="mode-card-label">{m.label}</div>
                 <div className="mode-card-desc">{m.desc}</div>
                 {m.locked && <div className="mode-card-lock hud-label">offline</div>}
-                {!m.locked && authLocked && (
+                {!m.locked && signInLocked && (
                   <div className="mode-card-lock mode-card-lock-auth hud-label">sign in required</div>
+                )}
+                {!m.locked && verifyLocked && (
+                  <div className="mode-card-lock mode-card-lock-auth hud-label">verify email to unlock</div>
                 )}
               </button>
             );

@@ -23,8 +23,14 @@ io.use(wrap(sessionMiddleware));
 io.use(wrap(passport.initialize()));
 io.use(wrap(passport.session()));
 io.use((socket, next) => {
-  if (socket.request.user) return next();
-  next(new Error('Sign in required to play VS mode'));
+  if (!socket.request.user) return next(new Error('Sign in required to play VS mode'));
+  // Mirrors the frontend's mode-card gating in App.jsx — VS/AI both require
+  // a verified email, not just a signed-in session. Enforced here too so
+  // it can't be skipped by talking to the socket directly.
+  if (!socket.request.user.emailVerified) {
+    return next(new Error('Please verify your email to play VS/AI mode'));
+  }
+  next();
 });
 
 attachPongHandlers(io);
