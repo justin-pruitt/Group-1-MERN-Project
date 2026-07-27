@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { sound } from './sound';
 import { useAuth } from './AuthContext';
 import Leaderboard from './Leaderboard';
+import CountdownOverlay from './CountdownOverlay';
 import './SoloGame.css';
 
 // Theme colors (kept as literals here since canvas fillStyle can't read
@@ -12,7 +13,20 @@ const COLOR_PADDLE = '#3fe0d0';
 const COLOR_BALL = '#e8edf7';
 const COLOR_CELL = '#b98cff';
 
-function Rally({ onGameOver }) {
+// Start-speed slider range. The floor is the game's original launch speed
+// (nothing slower — a slower start would make Solo *easier* than the
+// baseline everyone's used to) and the ceiling is MAX_SPEED from
+// PongMatch.js/Rally's own in-flight cap (nothing faster — the ball
+// already can't exceed that during play, so the start shouldn't either).
+const MIN_START_SPEED = 4.2;
+const MAX_START_SPEED = 20;
+
+function speedLevelToStartSpeed(level) {
+  const clamped = Math.max(1, Math.min(10, level));
+  return MIN_START_SPEED + ((MAX_START_SPEED - MIN_START_SPEED) * (clamped - 1)) / 9;
+}
+
+function Rally({ startSpeed, onGameOver }) {
   const canvasRef = useRef(null);
   const [gameStats, setGameStats] = useState({ volleys: 0, points: 0, total: 0 });
 
@@ -24,7 +38,10 @@ function Rally({ onGameOver }) {
     let prevPlayerY = player.y;
 
     // Matched to versus mode's real-world speed — see PongMatch.js.
-    const BASE_SPEED = 4.2;
+    // Adjustable by the player (1-10 on the pre-run slider, mapped to
+    // MIN_START_SPEED..MAX_SPEED); defaults to the original value if a
+    // caller doesn't pass one.
+    const BASE_SPEED = startSpeed ?? MIN_START_SPEED;
     const MAX_SPEED = 20;
     const FLICK_MAX_SPEED = MAX_SPEED * 1.6; // mirrors PongMatch's FLICK_MAX_BALL_SPEED headroom
     const FLICK_INFLUENCE = 0.012; // paddle px/sec -> ball speed units; mirrors PongMatch's FLICK_INFLUENCE
@@ -231,7 +248,7 @@ function Rally({ onGameOver }) {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('touchmove', onTouchMove);
     };
-  }, [onGameOver]);
+  }, [onGameOver, startSpeed]);
 
   return (
     <div className="solo-wrap">
@@ -254,6 +271,8 @@ function Rally({ onGameOver }) {
 }
 
 export default React.memo(function SoloGame() {
+  const [phase, setPhase] = useState('setup'); // setup | countdown | playing | gameover
+  const [speedLevel, setSpeedLevel] = useState(5);
   const [key, setKey] = useState(0);
   const [finalScore, setFinalScore] = useState(null);
   const [saveState, setSaveState] = useState('idle'); // idle | saving | saved | error
@@ -263,12 +282,21 @@ export default React.memo(function SoloGame() {
   const handleGameOver = useCallback((score) => {
     setFinalScore(score);
     setSaveState('idle');
+    setPhase('gameover');
   }, []);
+
+  const startRun = () => {
+    sound.startMusic();
+    setPhase('countdown');
+  };
+
+  const beginPlaying = useCallback(() => setPhase('playing'), []);
 
   const restart = () => {
     sound.startMusic();
     setFinalScore(null);
     setKey((k) => k + 1);
+    setPhase('setup');
   };
 
   const saveScore = async () => {
@@ -291,9 +319,39 @@ export default React.memo(function SoloGame() {
   return (
     <div className="solo-shell">
       <div className="hud-label solo-heading">solo ops</div>
-      {finalScore === null ? (
-        <Rally key={key} onGameOver={handleGameOver} />
-      ) : (
+
+      {phase === 'setup' && (
+        <div className="solo-setup bracket-frame">
+          <div className="hud-label solo-setup-title">start speed</div>
+          <div className="solo-speed-row">
+            <input
+              type="range"
+              min="1"
+              max="10"
+              step="1"
+              value={speedLevel}
+              onChange={(e) => setSpeedLevel(Number(e.target.value))}
+              aria-label="Start speed"
+            />
+            <span className="solo-speed-value">{speedLevel}/10</span>
+          </div>
+          <button className="hud-btn solo-setup-start" onClick={startRun}>
+            Start run
+          </button>
+        </div>
+      )}
+
+      {phase === 'countdown' && (
+        <div className="solo-countdown-wrap">
+          <CountdownOverlay onDone={beginPlaying} />
+        </div>
+      )}
+
+      {phase === 'playing' && (
+        <Rally key={key} startSpeed={speedLevelToStartSpeed(speedLevel)} onGameOver={handleGameOver} />
+      )}
+
+      {phase === 'gameover' && (
         <div className="solo-gameover bracket-frame">
           <div className="hud-label">run ended</div>
           <div className="solo-final-score">{finalScore}</div>

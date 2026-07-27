@@ -4,6 +4,11 @@ const Score = require('../models/Score');
 // Simple FIFO matchmaking: first two players to queue get paired. Fine
 // for a class demo; real matchmaking/invites is a natural upgrade once
 // accounts exist.
+//
+// Matches CountdownOverlay's total run time on the frontend (4 steps x
+// 1000ms, timed to the countdown audio clip) — the ball shouldn't start
+// moving until the player's "GO" lands.
+const COUNTDOWN_DELAY_MS = 4000;
 let waitingSocket = null;
 const matchBySocket = new Map();
 const sideBySocket = new Map();
@@ -72,7 +77,9 @@ function attachPongHandlers(io) {
           you: { displayName: rightUser?.displayName },
           opponent: { displayName: leftUser?.displayName },
         });
-        match.start();
+        // Delay the actual ball movement so it lines up with the
+        // "3, 2, 1, GO" countdown both clients are showing right now.
+        match.startTimeout = setTimeout(() => match.start(), COUNTDOWN_DELAY_MS);
       } else {
         waitingSocket = socket;
         socket.emit('pong:waiting');
@@ -93,6 +100,7 @@ function attachPongHandlers(io) {
 
       const match = matchBySocket.get(socket.id);
       if (match) {
+        clearTimeout(match.startTimeout);
         match.stop();
         io.to(match.id).emit('pong:opponent_left');
         matchBySocket.delete(match.sockets.left);

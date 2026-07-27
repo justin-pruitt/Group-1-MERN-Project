@@ -63,6 +63,10 @@
   color: var(--signal-b);
 }
 
+.vs-canvas-wrap {
+  position: relative;
+}
+
 .vs-canvas {
   display: block;
   width: 100%;

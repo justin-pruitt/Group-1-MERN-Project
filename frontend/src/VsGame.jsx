@@ -3,6 +3,7 @@ import { socket } from "./socket";
 import { sound } from "./sound";
 import { useAuth } from "./AuthContext";
 import { getInitials } from "./initials";
+import CountdownOverlay from "./CountdownOverlay";
 import "./VsGame.css";
 
 // Must match backend/game/PongMatch.js
@@ -17,7 +18,7 @@ export default React.memo(function VsGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
   const { user } = useAuth();
-  const [phase, setPhase] = useState("idle"); // idle | waiting | playing | ended
+  const [phase, setPhase] = useState("idle"); // idle | waiting | countdown | playing | ended
   const [side, setSide] = useState(null);
   const [matchup, setMatchup] = useState(null); // { you, opponent } display names from the server
   const [endInfo, setEndInfo] = useState(null);
@@ -42,7 +43,9 @@ export default React.memo(function VsGame() {
       setMatchup({ you, opponent });
       setEndInfo(null);
       setScore({ left: 0, right: 0 });
-      setPhase("playing");
+      // The server holds the ball for the same ~3.2s the countdown takes
+      // (see matchmaking.js), so "playing" only kicks in once GO lands.
+      setPhase("countdown");
     };
     const onState = (state) => {
       stateRef.current = state;
@@ -200,7 +203,7 @@ export default React.memo(function VsGame() {
               </button>
             )}
             {(phase === "connecting" || phase === "waiting") && <span>Scanning for an opponent…</span>}
-            {phase === "playing" && matchup && (
+            {(phase === "playing" || phase === "countdown") && matchup && (
               <span className="vs-matchup">
                 <strong className={side === "left" ? "vs-side-a" : "vs-side-b"}>
                   {getInitials(matchup.you?.displayName)}
@@ -236,7 +239,10 @@ export default React.memo(function VsGame() {
             </div>
           )}
 
-          <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
+          <div className="vs-canvas-wrap">
+            <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
+            {phase === "countdown" && <CountdownOverlay onDone={() => setPhase("playing")} />}
+          </div>
         </>
       )}
     </div>

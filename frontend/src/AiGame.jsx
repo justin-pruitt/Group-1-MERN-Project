@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import { sound } from "./sound";
 import { useAuth } from "./AuthContext";
+import CountdownOverlay from "./CountdownOverlay";
 import "./AiGame.css";
 
 // Must match backend/game/PongMatch.js
@@ -16,7 +17,7 @@ export default React.memo(function AiGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
   const { user } = useAuth();
-  const [phase, setPhase] = useState("idle"); // idle | connecting | playing | ended
+  const [phase, setPhase] = useState("idle"); // idle | connecting | countdown | playing | ended
   const [endInfo, setEndInfo] = useState(null);
   const [score, setScore] = useState({ left: 0, right: 0 });
   const [authError, setAuthError] = useState(false);
@@ -37,7 +38,9 @@ export default React.memo(function AiGame() {
       setEndInfo(null);
       setScore({ left: 0, right: 0 });
       setLine(null);
-      setPhase("playing");
+      // The server holds the ball for the same ~3.2s the countdown takes
+      // (see aiMatchmaking.js), so "playing" only kicks in once GO lands.
+      setPhase("countdown");
     };
     const onState = (state) => {
       stateRef.current = state;
@@ -198,7 +201,7 @@ export default React.memo(function AiGame() {
               </button>
             )}
             {phase === "connecting" && <span>Loading model…</span>}
-            {phase === "playing" && (
+            {(phase === "playing" || phase === "countdown") && (
               <span className="ai-matchup">
                 <strong className="ai-side-you">You</strong>
                 <span className="ai-matchup-vs">vs</span>
@@ -230,6 +233,7 @@ export default React.memo(function AiGame() {
 
           <div className="ai-canvas-wrap">
             <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="ai-canvas" />
+            {phase === "countdown" && <CountdownOverlay onDone={() => setPhase("playing")} />}
             {(phase === "playing" || phase === "ended") && line && (
               <div className="ai-say bracket-frame" key={line}>
                 {line}

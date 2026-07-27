@@ -43,6 +43,47 @@
   touch-action: none;
 }
 
+.solo-setup {
+  padding: 32px 24px;
+  text-align: center;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+}
+
+.solo-setup-title {
+  margin-bottom: 16px;
+}
+
+.solo-speed-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.solo-speed-row input[type='range'] {
+  width: 220px;
+  accent-color: var(--signal-a);
+}
+
+.solo-speed-value {
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--signal-a);
+  min-width: 40px;
+}
+
+.solo-countdown-wrap {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 700 / 450;
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  background: var(--panel);
+}
+
 .solo-gameover {
   padding: 40px 24px;
   text-align: center;

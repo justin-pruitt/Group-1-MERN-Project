@@ -4,6 +4,11 @@ const { getCommentary } = require('../ai/commentary');
 
 // No matchmaking needed here (unlike VS mode) — it's always one human
 // against the agent, so a match can start the moment the socket asks.
+//
+// Matches CountdownOverlay's total run time on the frontend (4 steps x
+// 1000ms, timed to the countdown audio clip) — the ball shouldn't start
+// moving until the player's "GO" lands.
+const COUNTDOWN_DELAY_MS = 4000;
 const matchBySocket = new Map();
 const watcherBySocket = new Map(); // polls for score changes to trigger commentary
 
@@ -26,6 +31,7 @@ async function saveAiScore(user, longestVolley) {
 function cleanupSocket(socketId) {
   const match = matchBySocket.get(socketId);
   if (match) {
+    clearTimeout(match.startTimeout);
     match.stop();
     matchBySocket.delete(socketId);
   }
@@ -64,7 +70,9 @@ function attachAiHandlers(io) {
 
       matchBySocket.set(socket.id, match);
       socket.emit('ai:matched', { you: { displayName: user?.displayName } });
-      match.start();
+      // Delay the actual ball movement so it lines up with the
+      // "3, 2, 1, GO" countdown the client is showing right now.
+      match.startTimeout = setTimeout(() => match.start(), COUNTDOWN_DELAY_MS);
 
       getCommentary('match_start', {})
         .then((line) => io.to(roomId).emit('ai:say', line))

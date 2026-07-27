@@ -54,6 +54,7 @@ export default function App() {
       wall: '/Assets/sfx/ball-contact.mp3',
       paddle: '/Assets/sfx/ball-paddle.mp3',
       click: '/Assets/sfx/menu-click.mp3',
+      countdownSequence: '/Assets/sfx/countdown-sequence.mp3',
     });
     sound.setVolume(settings.sfxVolume);
     sound.setMusicVolume(settings.musicVolume);
