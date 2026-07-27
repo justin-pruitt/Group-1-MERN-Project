@@ -28,6 +28,21 @@ async function saveAiScore(user, longestVolley) {
   }
 }
 
+// Flips the "beat the AI" flag the first time a signed-in player wins —
+// left is always the human in an AI Protocol match (see AiMatch.js), so
+// score.left > score.right is enough to know they won. Fire-and-forget
+// with its own try/catch, same pattern as saveAiScore above, so a Mongo
+// hiccup here can't block the match-end flow.
+async function markAiVictory(user) {
+  if (!user || user.hasBeatenAI) return;
+  try {
+    user.hasBeatenAI = true;
+    await user.save();
+  } catch (err) {
+    console.error('Failed to record AI Protocol win:', err.message);
+  }
+}
+
 function cleanupSocket(socketId) {
   const match = matchBySocket.get(socketId);
   if (match) {
@@ -60,6 +75,7 @@ function attachAiHandlers(io) {
           saveAiScore(user, longestVolley);
 
           const aiWon = score.right > score.left;
+          if (!aiWon) markAiVictory(user);
           getCommentary(aiWon ? 'match_end_win' : 'match_end_loss', { score, longestVolley })
             .then((line) => io.to(roomId).emit('ai:say', line))
             .catch(() => {});

@@ -1,14 +1,20 @@
 const { PongMatch } = require('./PongMatch');
 const Score = require('../models/Score');
+const { publicPlayer } = require('./publicPlayer');
 
 // Simple FIFO matchmaking: first two players to queue get paired. Fine
 // for a class demo; real matchmaking/invites is a natural upgrade once
 // accounts exist.
 //
-// Matches CountdownOverlay's total run time on the frontend (4 steps x
-// 1000ms, timed to the countdown audio clip) — the ball shouldn't start
-// moving until the player's "GO" lands.
+// Two things happen client-side before the ball can move: ClashScreen's
+// versus intro (timed to Clash.mp3, ~3.3s — see ClashScreen.jsx) and
+// then CountdownOverlay's "3, 2, 1, GO" (4 steps x 1000ms, timed to the
+// countdown audio clip). Frontend and backend are separate processes, so
+// these are kept in sync by hand rather than a shared import — if either
+// clip's duration changes, update both sides.
+const CLASH_DELAY_MS = 3300;
 const COUNTDOWN_DELAY_MS = 4000;
+const MATCH_START_DELAY_MS = CLASH_DELAY_MS + COUNTDOWN_DELAY_MS;
 let waitingSocket = null;
 const matchBySocket = new Map();
 const sideBySocket = new Map();
@@ -67,19 +73,15 @@ function attachPongHandlers(io) {
         matchBySocket.set(left.id, match);
         matchBySocket.set(right.id, match);
 
-        left.emit('pong:matched', {
-          side: 'left',
-          you: { displayName: leftUser?.displayName },
-          opponent: { displayName: rightUser?.displayName },
-        });
-        right.emit('pong:matched', {
-          side: 'right',
-          you: { displayName: rightUser?.displayName },
-          opponent: { displayName: leftUser?.displayName },
-        });
+        const leftPlayer = publicPlayer(leftUser);
+        const rightPlayer = publicPlayer(rightUser);
+
+        left.emit('pong:matched', { side: 'left', you: leftPlayer, opponent: rightPlayer });
+        right.emit('pong:matched', { side: 'right', you: rightPlayer, opponent: leftPlayer });
         // Delay the actual ball movement so it lines up with the
-        // "3, 2, 1, GO" countdown both clients are showing right now.
-        match.startTimeout = setTimeout(() => match.start(), COUNTDOWN_DELAY_MS);
+        // clash animation + "3, 2, 1, GO" countdown both clients are
+        // showing right now.
+        match.startTimeout = setTimeout(() => match.start(), MATCH_START_DELAY_MS);
       } else {
         waitingSocket = socket;
         socket.emit('pong:waiting');

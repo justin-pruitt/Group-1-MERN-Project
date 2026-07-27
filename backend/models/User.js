@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema(
     // Small resized image (data URI) uploaded by the player, distinct from the
     // Google avatarUrl. Falls back to avatarUrl, then initials, when unset.
     profilePicture: { type: String },
+    // Set the first time a signed-in player beats the AI Protocol agent
+    // (see backend/game/aiMatchmaking.js) — never unset once true. Drives
+    // the crown badge shown next to this player's name/avatar anywhere
+    // PlayerAvatar/PlayerTag render them on the frontend.
+    hasBeatenAI: { type: Boolean, default: false },
     emailVerified: { type: Boolean, default: false },
     verificationToken: { type: String },
     verificationTokenExpires: { type: Date },
