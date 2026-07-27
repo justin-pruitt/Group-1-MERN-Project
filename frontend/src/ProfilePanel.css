@@ -1,0 +1,70 @@
+.profile-panel {
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 240px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+}
+
+.profile-panel-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.profile-panel-preview {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid var(--edge, #1e2740);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.profile-panel-preview-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel-raised);
+}
+
+.profile-panel-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.profile-panel-field input[type='text'] {
+  background: var(--panel-raised);
+  border: 1px solid var(--edge);
+  border-radius: 2px;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+}
+
+.profile-panel-field input[type='text']:focus {
+  outline: none;
+  border-color: var(--signal-a);
+}
+
+.profile-panel-error {
+  color: #ff6b6b;
+  font-size: 10px;
+}
+
+.profile-panel-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.profile-panel-save {
+  border-color: var(--signal-a);
+  color: var(--signal-a);
+}

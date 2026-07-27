@@ -6,6 +6,7 @@ const { passport } = require('./config/passport');
 const authRoutes = require('./routes/auth');
 const leaderboardRoutes = require('./routes/leaderboard');
 const settingsRoutes = require('./routes/settings');
+const profileRoutes = require('./routes/profile');
 
 const app = express();
 app.set('trust proxy', 1); // nginx sits in front of us — trust its X-Forwarded-* headers
@@ -23,6 +24,7 @@ app.get('/api/health', (req, res) => {
 app.use('/api/auth', authRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/profile', profileRoutes);
 
 // Add real routes above this line as features get built
 // (match history, etc).

@@ -1,12 +1,24 @@
 import { useAuth } from './AuthContext';
 import { getInitials } from './initials';
+import ProfilePanel from './ProfilePanel';
 import './ProfileMenu.css';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 export default function ProfileMenu() {
   const { user, loading, logout, loginUrl } = useAuth();
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    if (!editing) return;
+    const handleClickOutside = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setEditing(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [editing]);
 
   if (loading) return <div className="profile-menu" />;
 
@@ -31,14 +43,33 @@ export default function ProfileMenu() {
     }
   };
 
+  const avatarSrc = user?.profilePicture || user?.avatarUrl;
+  const displayLabel = user?.username || user?.displayName;
+
   return (
-    <div className="profile-menu">
+    <div className="profile-menu" ref={menuRef}>
       {user ? (
         <>
-          {user.avatarUrl && <img src={user.avatarUrl} alt="" className="profile-avatar" />}
-          <span className="profile-name" title={user.displayName}>
-            {getInitials(user.displayName)}
+          <button
+            type="button"
+            className="profile-avatar-btn"
+            onClick={() => setEditing((o) => !o)}
+            title="Edit profile"
+          >
+            {avatarSrc ? (
+              <img src={avatarSrc} alt="" className="profile-avatar" />
+            ) : (
+              <span className="profile-avatar profile-avatar-fallback">{getInitials(displayLabel)}</span>
+            )}
+          </button>
+          <span className="profile-name" title={displayLabel}>
+            {displayLabel}
           </span>
+          {editing && (
+            <div className="profile-panel-popover">
+              <ProfilePanel onClose={() => setEditing(false)} />
+            </div>
+          )}
           {!user.emailVerified && (
             <button // button for resending verification email
               className="profile-verify-banner"

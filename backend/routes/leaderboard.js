@@ -13,8 +13,26 @@ function requireAuth(req, res, next) {
 router.get('/', async (req, res) => {
   const mode = req.query.mode === 'vs' ? 'vs' : 'solo';
   try {
-    const scores = await Score.find({ mode }).sort({ score: -1 }).limit(10);
-    res.json(scores);
+    const scores = await Score.find({ mode })
+      .sort({ score: -1 })
+      .limit(10)
+      .populate('user', 'username profilePicture avatarUrl');
+
+    // Prefer the player's *current* username/picture over the snapshot taken
+    // at submit time, so profile edits show up on past runs too. The
+    // snapshotted displayName remains the fallback for deleted accounts.
+    const withProfile = scores.map((entry) => {
+      const obj = entry.toObject();
+      const user = obj.user;
+      return {
+        ...obj,
+        displayName: user?.username || obj.displayName,
+        avatarUrl: user?.profilePicture || user?.avatarUrl || null,
+        user: undefined,
+      };
+    });
+
+    res.json(withProfile);
   } catch (err) {
     res.status(500).json({ error: 'Could not load leaderboard' });
   }
@@ -28,7 +46,7 @@ router.post('/', requireAuth, async (req, res) => {
   try {
     const entry = await Score.create({
       user: req.user._id,
-      displayName: req.user.displayName,
+      displayName: req.user.username || req.user.displayName,
       score,
       mode: mode === 'vs' ? 'vs' : 'solo',
     });

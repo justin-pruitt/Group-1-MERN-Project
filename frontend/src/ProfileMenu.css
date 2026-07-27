@@ -14,12 +14,23 @@
    instead (it's already first in the DOM, so no reordering needed). */
 @media (max-width: 640px) {
   .profile-menu {
-    position: static;
+    position: relative;
+    top: auto;
+    right: auto;
     width: 100%;
     justify-content: center;
     flex-wrap: wrap;
     margin-bottom: 20px;
   }
+}
+
+.profile-avatar-btn {
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  line-height: 0;
+  border-radius: 50%;
 }
 
 .profile-avatar {
@@ -29,10 +40,32 @@
   border: 1px solid var(--edge, #1e2740);
 }
 
+.profile-avatar-fallback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  color: var(--text-dim, #8792ac);
+  background: var(--panel-raised, #131a2c);
+  box-sizing: border-box;
+}
+
 .profile-name {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 13px;
   color: var(--text-dim, #8792ac);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-panel-popover {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  z-index: 500;
 }
 
 .profile-signin {
