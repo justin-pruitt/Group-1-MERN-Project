@@ -242,9 +242,7 @@ export default React.memo(function VsGame() {
           <div className="vs-canvas-wrap">
             <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
             {phase === "countdown" && <CountdownOverlay onDone={() => setPhase("playing")} />}
-            {(phase === "playing" || phase === "countdown") && (
-              <div className="vs-target-score">First to 7</div>
-            )}
+            
           </div>
         </>
       )}
