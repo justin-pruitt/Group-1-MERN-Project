@@ -2,8 +2,9 @@ import React, { memo, useEffect, useRef, useState } from "react";
 import { socket } from "./socket";
 import { sound } from "./sound";
 import { useAuth } from "./AuthContext";
-import { getInitials } from "./initials";
 import CountdownOverlay from "./CountdownOverlay";
+import ClashScreen from "./ClashScreen";
+import PlayerTag from "./PlayerTag";
 import "./VsGame.css";
 
 // Must match backend/game/PongMatch.js
@@ -18,9 +19,9 @@ export default React.memo(function VsGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
   const { user } = useAuth();
-  const [phase, setPhase] = useState("idle"); // idle | waiting | countdown | playing | ended
+  const [phase, setPhase] = useState("idle"); // idle | connecting | waiting | clash | countdown | playing | ended
   const [side, setSide] = useState(null);
-  const [matchup, setMatchup] = useState(null); // { you, opponent } display names from the server
+  const [matchup, setMatchup] = useState(null); // { you, opponent } player info from the server (see publicPlayer.js)
   const [endInfo, setEndInfo] = useState(null);
   const [score, setScore] = useState({ left: 0, right: 0 });
   const [authError, setAuthError] = useState(false);
@@ -43,9 +44,11 @@ export default React.memo(function VsGame() {
       setMatchup({ you, opponent });
       setEndInfo(null);
       setScore({ left: 0, right: 0 });
-      // The server holds the ball for the same ~3.2s the countdown takes
-      // (see matchmaking.js), so "playing" only kicks in once GO lands.
-      setPhase("countdown");
+      // Clash plays first, then CountdownOverlay once it calls onDone.
+      // The server holds the ball for exactly that combined stretch
+      // (see MATCH_START_DELAY_MS in matchmaking.js), so "playing" only
+      // kicks in once GO actually lands.
+      setPhase("clash");
     };
     const onState = (state) => {
       stateRef.current = state;
@@ -203,15 +206,11 @@ export default React.memo(function VsGame() {
               </button>
             )}
             {(phase === "connecting" || phase === "waiting") && <span>Scanning for an opponent…</span>}
-            {(phase === "playing" || phase === "countdown") && matchup && (
+            {(phase === "countdown" || phase === "playing" || phase === "ended") && matchup && (
               <span className="vs-matchup">
-                <strong className={side === "left" ? "vs-side-a" : "vs-side-b"}>
-                  {getInitials(matchup.you?.displayName)}
-                </strong>
+                <PlayerTag player={matchup.you} colorVar={side === "left" ? "--signal-a" : "--signal-b"} />
                 <span className="vs-matchup-vs">vs</span>
-                <strong className={side === "left" ? "vs-side-b" : "vs-side-a"}>
-                  {getInitials(matchup.opponent?.displayName)}
-                </strong>
+                <PlayerTag player={matchup.opponent} colorVar={side === "left" ? "--signal-b" : "--signal-a"} />
               </span>
             )}
             {phase === "ended" && (
@@ -241,6 +240,9 @@ export default React.memo(function VsGame() {
 
           <div className="vs-canvas-wrap">
             <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="vs-canvas" />
+            {phase === "clash" && matchup && (
+              <ClashScreen you={matchup.you} opponent={matchup.opponent} side={side} onDone={() => setPhase("countdown")} />
+            )}
             {phase === "countdown" && <CountdownOverlay onDone={() => setPhase("playing")} />}
             {(phase === "playing" || phase === "countdown") && (
               <div className="vs-target-score">First to 7 Wins</div>

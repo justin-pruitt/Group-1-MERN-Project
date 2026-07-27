@@ -3,6 +3,7 @@ import { socket } from "./socket";
 import { sound } from "./sound";
 import { useAuth } from "./AuthContext";
 import CountdownOverlay from "./CountdownOverlay";
+import PlayerTag from "./PlayerTag";
 import "./AiGame.css";
 
 // Must match backend/game/PongMatch.js
@@ -13,10 +14,18 @@ const PADDLE_W = 12;
 const PADDLE_H = 80;
 const BALL_R = 8;
 
+// The agent isn't a User document, so its identity is just a fixed
+// stand-in with the same shape PlayerAvatar/PlayerTag expect elsewhere.
+// No hasBeatenAI — the crown is for humans who've beaten it, not for it.
+const AI_AGENT = {
+  displayName: "Agent",
+  avatarUrl: "/Assets/avatars/ai-agent.jpg",
+};
+
 export default React.memo(function AiGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
-  const { user } = useAuth();
+  const { user, refresh } = useAuth();
   const [phase, setPhase] = useState("idle"); // idle | connecting | countdown | playing | ended
   const [endInfo, setEndInfo] = useState(null);
   const [score, setScore] = useState({ left: 0, right: 0 });
@@ -48,6 +57,13 @@ export default React.memo(function AiGame() {
     const onEnd = ({ score, longestVolley }) => {
       setEndInfo({ score, longestVolley });
       setPhase("ended");
+      // A first-time win flips hasBeatenAI server-side (see
+      // markAiVictory in aiMatchmaking.js) — re-fetch so the crown shows
+      // up immediately instead of waiting for the next page load. Small
+      // delay gives that save a moment to land before we ask again.
+      if (score.left > score.right) {
+        setTimeout(() => refresh(), 400);
+      }
     };
     const onSay = (text) => {
       if (text) setLine(text);
@@ -201,11 +217,11 @@ export default React.memo(function AiGame() {
               </button>
             )}
             {phase === "connecting" && <span>Loading model…</span>}
-            {(phase === "playing" || phase === "countdown") && (
+            {(phase === "countdown" || phase === "playing" || phase === "ended") && (
               <span className="ai-matchup">
-                <strong className="ai-side-you">You</strong>
+                <PlayerTag player={user} colorVar="--signal-a" />
                 <span className="ai-matchup-vs">vs</span>
-                <strong className="ai-side-agent">Agent</strong>
+                <PlayerTag player={AI_AGENT} colorVar="--signal-b" />
               </span>
             )}
             {phase === "ended" && (

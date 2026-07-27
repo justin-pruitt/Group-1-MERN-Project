@@ -1,0 +1,77 @@
+.player-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+
+.player-avatar-img {
+  border-radius: 50%;
+  border: 1px solid var(--edge, #1e2740);
+  display: block;
+  object-fit: cover;
+}
+
+.player-avatar-fallback {
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--text-dim, #8792ac);
+  background: var(--panel-raised, #131a2c);
+  box-sizing: border-box;
+}
+
+.player-avatar-crown {
+  position: absolute;
+  left: 50%;
+  z-index: 1;
+  filter: drop-shadow(0 0 4px rgba(255, 207, 92, 0.65));
+}
+
+/* Matches ProfileMenu's existing 24px avatar so the same face doesn't
+   change size between the corner menu and the in-match header. */
+.player-avatar-md,
+.player-avatar-md .player-avatar-img {
+  width: 24px;
+  height: 24px;
+}
+.player-avatar-md .player-avatar-fallback {
+  font-size: 10px;
+}
+.player-avatar-md .player-avatar-crown {
+  top: -9px;
+  width: 14px;
+  height: 14px;
+  transform: translateX(-50%);
+}
+
+/* ClashScreen's big reveal portraits. */
+.player-avatar-lg,
+.player-avatar-lg .player-avatar-img {
+  width: 72px;
+  height: 72px;
+}
+.player-avatar-lg .player-avatar-fallback {
+  font-size: 24px;
+}
+.player-avatar-lg .player-avatar-crown {
+  top: -16px;
+  width: 26px;
+  height: 26px;
+  transform: translateX(-50%);
+}
+
+@media (max-width: 640px) {
+  .player-avatar-lg,
+  .player-avatar-lg .player-avatar-img {
+    width: 52px;
+    height: 52px;
+  }
+  .player-avatar-lg .player-avatar-fallback {
+    font-size: 18px;
+  }
+  .player-avatar-lg .player-avatar-crown {
+    top: -13px;
+    width: 20px;
+    height: 20px;
+  }
+}

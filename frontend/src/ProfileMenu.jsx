@@ -1,5 +1,6 @@
 import { useAuth } from './AuthContext';
-import { getInitials } from './initials';
+import { playerLabel } from './playerDisplay';
+import PlayerAvatar from './PlayerAvatar';
 import ProfilePanel from './ProfilePanel';
 import './ProfileMenu.css';
 import { useEffect, useRef, useState } from 'react';
@@ -43,8 +44,7 @@ export default function ProfileMenu() {
     }
   };
 
-  const avatarSrc = user?.profilePicture || user?.avatarUrl;
-  const displayLabel = user?.username || user?.displayName;
+  const displayLabel = playerLabel(user);
 
   return (
     <div className="profile-menu" ref={menuRef}>
@@ -56,11 +56,7 @@ export default function ProfileMenu() {
             onClick={() => setEditing((o) => !o)}
             title="Edit profile"
           >
-            {avatarSrc ? (
-              <img src={avatarSrc} alt="" className="profile-avatar" />
-            ) : (
-              <span className="profile-avatar profile-avatar-fallback">{getInitials(displayLabel)}</span>
-            )}
+            <PlayerAvatar player={user} size="md" crown={!!user?.hasBeatenAI} />
           </button>
           <span className="profile-name" title={displayLabel}>
             {displayLabel}

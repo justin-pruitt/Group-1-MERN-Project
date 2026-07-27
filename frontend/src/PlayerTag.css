@@ -1,0 +1,22 @@
+.player-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.player-tag-name {
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .player-tag-name {
+    max-width: 72px;
+    font-size: 12px;
+  }
+}

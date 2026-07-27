@@ -21,13 +21,6 @@
   text-align: center;
 }
 
-.vs-side-a {
-  color: var(--signal-a);
-}
-.vs-side-b {
-  color: var(--signal-b);
-}
-
 .vs-matchup {
   display: flex;
   align-items: center;

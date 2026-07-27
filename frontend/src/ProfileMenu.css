@@ -33,24 +33,6 @@
   border-radius: 50%;
 }
 
-.profile-avatar {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--edge, #1e2740);
-}
-
-.profile-avatar-fallback {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--font-mono, ui-monospace, monospace);
-  font-size: 10px;
-  color: var(--text-dim, #8792ac);
-  background: var(--panel-raised, #131a2c);
-  box-sizing: border-box;
-}
-
 .profile-name {
   font-family: var(--font-mono, ui-monospace, monospace);
   font-size: 13px;

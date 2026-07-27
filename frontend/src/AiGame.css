@@ -21,13 +21,6 @@
   text-align: center;
 }
 
-.ai-side-you {
-  color: var(--signal-a);
-}
-.ai-side-agent {
-  color: var(--signal-b);
-}
-
 .ai-matchup {
   display: flex;
   align-items: center;
