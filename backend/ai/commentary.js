@@ -44,7 +44,18 @@ function buildThinkingConfig(model) {
 // a workaround for a code bug elsewhere — commentary is a nice-to-have,
 // so under load it should quietly drop to fallback lines instead of
 // hammering Gemini and eating into everyone else's quota too.
-const MIN_MS_BETWEEN_CALLS = 2000; // hard floor on request rate, regardless of tier
+//
+// 2000ms (30 req/min) was set without checking the actual free-tier
+// ceiling — Google's documented free-tier limit for Flash models
+// (gemini-3.5-flash included) is 15 RPM, and some accounts/regions see
+// as low as 5-10 RPM (https://ai.google.dev/gemini-api/docs/rate-limits).
+// At 30/min we were requesting roughly double what the tier allows
+// whenever a rally produced score events close together, which is why
+// the 429 breaker below was tripping so often. 7000ms caps us at ~8.5
+// req/min — under even the conservative end of that range, with margin
+// for TPM/RPD counting against the same quota. Override via
+// GEMINI_MIN_MS_BETWEEN_CALLS if a paid tier raises the real ceiling.
+const MIN_MS_BETWEEN_CALLS = Number(process.env.GEMINI_MIN_MS_BETWEEN_CALLS) || 7000;
 let lastCallAt = 0;
 
 // Hard lock on top of the rate floor above. MIN_MS_BETWEEN_CALLS only
