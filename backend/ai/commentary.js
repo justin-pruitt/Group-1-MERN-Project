@@ -47,6 +47,18 @@ function buildThinkingConfig(model) {
 const MIN_MS_BETWEEN_CALLS = 2000; // hard floor on request rate, regardless of tier
 let lastCallAt = 0;
 
+// Hard lock on top of the rate floor above. MIN_MS_BETWEEN_CALLS only
+// checks the gap between when calls *start* — if a call is still in
+// flight past that window (slow response, close to the 6s timeout, a
+// stalled connection, etc.) the old check let a second one start anyway,
+// so two requests could be outstanding to Gemini at once. This flag
+// makes "previous request finished" a separate, explicit condition:
+// set true right before the fetch, cleared in a finally so it resets on
+// success, error, AND timeout/abort alike, and checked before anything
+// else in getCommentary so a still-running call always wins and the new
+// event just falls back to a canned line instead of queuing up.
+let requestInFlight = false;
+
 // Circuit breaker: once Gemini itself tells us we're rate-limited (429),
 // stop trying for a cooldown window instead of retrying on the very next
 // event and getting rate-limited again. One log line on the transition
@@ -192,9 +204,11 @@ async function getCommentary(event, context = {}) {
   if (!apiKey) return fallbackLine(event);
 
   const now = Date.now();
+  if (requestInFlight) return fallbackLine(event); // previous call hasn't finished — never overlap requests
   if (now < cooldownUntil) return fallbackLine(event); // breaker is open, skip Gemini entirely
   if (now - lastCallAt < MIN_MS_BETWEEN_CALLS) return fallbackLine(event); // self-throttle
   lastCallAt = now;
+  requestInFlight = true;
 
   try {
     const result = await callGemini(buildPrompt(event, context), apiKey);
@@ -214,6 +228,8 @@ async function getCommentary(event, context = {}) {
   } catch (err) {
     logGeminiError(err.message);
     return fallbackLine(event);
+  } finally {
+    requestInFlight = false;
   }
 }
 
