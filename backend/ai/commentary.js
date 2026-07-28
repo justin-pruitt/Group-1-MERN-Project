@@ -4,12 +4,18 @@
 // instead of crashing the app — matches still run fine without it, they
 // just fall back to a small set of canned lines.
 
-// gemini-2.5-flash is being retired ahead of its official Oct 2026
-// shutdown date for some accounts — Google's own forum has reports of
-// "model is no longer available" errors well before that date. Default
-// to a current-generation GA model instead; override via GEMINI_MODEL
-// if this drifts out of date again.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash';
+// Using gemini-2.5-flash-lite: same 15 RPM ceiling as gemini-3.5-flash on
+// the free tier, but a much more generous daily cap (1,000 RPD vs. a few
+// hundred) — the RPD limit was the bigger problem for a chatty
+// nice-to-have feature like this one, not just RPM. Its own official
+// shutdown date is also Oct 16, 2026 (Google's deprecations page lists
+// it alongside gemini-2.5-flash), and as of mid-July 2026 there are
+// forum reports of both intermittently 404ing ("model no longer
+// available") ahead of that date on some accounts. If that starts
+// showing up here, callGemini's generic non-429 error handling already
+// logs it and falls back to canned lines rather than crashing — but
+// keep an eye on the logs and swap GEMINI_MODEL if it gets persistent.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 // A bit more generous than a plain text-completion call would need —
 // even 'minimal' thinking adds some latency on top of generation time,
@@ -18,16 +24,14 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 // before falling back.
 const REQUEST_TIMEOUT_MS = 6000;
 
-// gemini-3.5-flash is a Gemini 3.x-series model. Gemini 3.x does NOT use
-// the `thinkingBudget` (raw token count) field — that's a Gemini 2.5-only
-// knob. Gemini 3.x uses `thinkingLevel` ('minimal' | 'low' | 'medium' |
-// 'high') instead; thinkingBudget is merely "accepted for backwards
-// compatibility" on Gemini 3 and has no documented effect on Flash, so
-// sending it alone (as an earlier fix here did) is a no-op — the model
-// just keeps its own default ('medium' for 3.5 Flash), which is exactly
-// as expensive, thinking-token-wise, as having no config at all. If
-// GEMINI_MODEL ever gets overridden back to a 2.5-series model, that one
-// *does* want thinkingBudget, so pick the right field for whichever
+// gemini-2.5-flash-lite is a Gemini 2.5-series model, so it uses the
+// `thinkingBudget` (raw token count) field, not `thinkingLevel` — that's
+// a Gemini 3.x-only knob. thinkingBudget: 0 is a true zero budget on
+// 2.5 models (Flash-Lite actually defaults to thinking OFF already, so
+// this is mostly a belt-and-suspenders no-op here, but keeps behavior
+// explicit rather than relying on the model's current default). If
+// GEMINI_MODEL ever gets pointed back at a Gemini 3.x model, that one
+// wants thinkingLevel instead, so pick the right field for whichever
 // model is actually configured rather than hardcoding one.
 function buildThinkingConfig(model) {
   if (/^gemini-3/.test(model)) {
@@ -35,7 +39,7 @@ function buildThinkingConfig(model) {
     // Flash models can't fully disable thinking, only get close to it.
     return { thinkingLevel: 'minimal' };
   }
-  return { thinkingBudget: 0 }; // true zero budget, supported on 2.5 Flash
+  return { thinkingBudget: 0 }; // true zero budget, supported on 2.5 Flash / Flash-Lite
 }
 
 // Self-throttling so a burst of match events (several concurrent
@@ -47,8 +51,8 @@ function buildThinkingConfig(model) {
 //
 // 2000ms (30 req/min) was set without checking the actual free-tier
 // ceiling — Google's documented free-tier limit for Flash models
-// (gemini-3.5-flash included) is 15 RPM, and some accounts/regions see
-// as low as 5-10 RPM (https://ai.google.dev/gemini-api/docs/rate-limits).
+// (gemini-2.5-flash-lite included) is 15 RPM, and some accounts/regions
+// see as low as 5-10 RPM (https://ai.google.dev/gemini-api/docs/rate-limits).
 // At 30/min we were requesting roughly double what the tier allows
 // whenever a rally produced score events close together, which is why
 // the 429 breaker below was tripping so often. 7000ms caps us at ~8.5
