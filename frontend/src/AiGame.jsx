@@ -26,11 +26,12 @@ export default React.memo(function AiGame() {
   const canvasRef = useRef(null);
   const stateRef = useRef(null); // latest server snapshot; render loop reads this, not React state
   const { user, refresh } = useAuth();
-  const [phase, setPhase] = useState("idle"); // idle | connecting | countdown | playing | ended
+  const [phase, setPhase] = useState("idle"); // idle | connecting | queued | countdown | playing | ended
   const [endInfo, setEndInfo] = useState(null);
   const [score, setScore] = useState({ left: 0, right: 0 });
   const [authError, setAuthError] = useState(false);
   const [line, setLine] = useState(null); // latest commentary line
+  const [queuePosition, setQueuePosition] = useState(null);
 
   // Same auth-gated connection pattern as VsGame — the server rejects
   // unauthenticated socket connections outright (see server.js).
@@ -47,9 +48,14 @@ export default React.memo(function AiGame() {
       setEndInfo(null);
       setScore({ left: 0, right: 0 });
       setLine(null);
+      setQueuePosition(null);
       // The server holds the ball for the same ~3.2s the countdown takes
       // (see aiMatchmaking.js), so "playing" only kicks in once GO lands.
       setPhase("countdown");
+    };
+    const onQueued = ({ position }) => {
+      setQueuePosition(position);
+      setPhase("queued");
     };
     const onState = (state) => {
       stateRef.current = state;
@@ -74,6 +80,7 @@ export default React.memo(function AiGame() {
     };
 
     socket.on("ai:matched", onMatched);
+    socket.on("ai:queued", onQueued);
     socket.on("pong:state", onState);
     socket.on("pong:end", onEnd);
     socket.on("ai:say", onSay);
@@ -81,6 +88,7 @@ export default React.memo(function AiGame() {
 
     return () => {
       socket.off("ai:matched", onMatched);
+      socket.off("ai:queued", onQueued);
       socket.off("pong:state", onState);
       socket.off("pong:end", onEnd);
       socket.off("ai:say", onSay);
@@ -200,6 +208,17 @@ export default React.memo(function AiGame() {
     socket.emit("ai:start");
   };
 
+  // Explicit "Cancel" while waiting — same event the unmount cleanup
+  // effect above already sends, just triggered by a click instead of
+  // leaving the page. Updates local state immediately rather than
+  // waiting on a round trip, since the server has nothing further to
+  // tell this socket once it's left the queue.
+  const leaveQueue = () => {
+    socket.emit("ai:stop");
+    setQueuePosition(null);
+    setPhase("idle");
+  };
+
   return (
     <div className="ai-shell">
       <div className="hud-label ai-heading">ai protocol</div>
@@ -217,6 +236,17 @@ export default React.memo(function AiGame() {
               </button>
             )}
             {phase === "connecting" && <span>Loading model…</span>}
+            {phase === "queued" && (
+              <span className="ai-matchup">
+                <span>
+                  AI Protocol is full — queue position {queuePosition ?? "…"}. You'll join automatically when a
+                  slot opens up.
+                </span>
+                <button className="hud-btn" onClick={leaveQueue}>
+                  Cancel
+                </button>
+              </span>
+            )}
             {(phase === "countdown" || phase === "playing" || phase === "ended") && (
               <span className="ai-matchup">
                 <PlayerTag player={user} colorVar="--signal-a" />
