@@ -4,18 +4,32 @@
 // instead of crashing the app — matches still run fine without it, they
 // just fall back to a small set of canned lines.
 
-// Using gemini-2.5-flash-lite: same 15 RPM ceiling as gemini-3.5-flash on
-// the free tier, but a much more generous daily cap (1,000 RPD vs. a few
-// hundred) — the RPD limit was the bigger problem for a chatty
-// nice-to-have feature like this one, not just RPM. Its own official
-// shutdown date is also Oct 16, 2026 (Google's deprecations page lists
-// it alongside gemini-2.5-flash), and as of mid-July 2026 there are
-// forum reports of both intermittently 404ing ("model no longer
-// available") ahead of that date on some accounts. If that starts
-// showing up here, callGemini's generic non-429 error handling already
-// logs it and falls back to canned lines rather than crashing — but
-// keep an eye on the logs and swap GEMINI_MODEL if it gets persistent.
-const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
+// Using gemini-3.5-flash-lite, NOT a 2.5-series model. Google has closed
+// the entire Gemini 2.5 line (Pro, Flash, and Flash-Lite) off to
+// newly-created API keys/projects — they 404 with "This model ... is no
+// longer available to new users," a different and more permanent
+// condition than any Oct 2026 deprecation date on that same model page.
+//
+// Published free-tier numbers (blog posts, even Google's own generic
+// rate-limits page) are NOT reliable for this — this project's actual
+// per-model quota, pulled straight from its AI Studio quota dashboard,
+// is much stricter and uneven across models:
+//   Gemini 3.5 Flash      5 RPM /  20 RPD  (this is what we were on —
+//                                           already over both when checked)
+//   Gemini 2.5 Flash      5 RPM /  20 RPD  (also 2.5-series — blocked anyway)
+//   Gemini 2.5 Flash Lite 10 RPM /  20 RPD (also 2.5-series — blocked anyway)
+//   Gemini 3 Flash         5 RPM /  20 RPD
+//   Gemini 3.6 Flash       5 RPM /  20 RPD
+//   Gemini 3.1 Flash Lite 15 RPM / 500 RPD
+//   Gemini 3.5 Flash Lite 15 RPM / 500 RPD  <- what we're using: best
+//                                              quota on the account by
+//                                              far, and the newest
+//                                              generation available
+// If GEMINI_MODEL ever needs to change again, check the actual quota
+// dashboard for the project this key belongs to (AI Studio → API keys
+// → quota), not a blog post — per-project limits vary independently of
+// what's "generally" published.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.5-flash-lite';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 // A bit more generous than a plain text-completion call would need —
 // even 'minimal' thinking adds some latency on top of generation time,
@@ -24,19 +38,18 @@ const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GE
 // before falling back.
 const REQUEST_TIMEOUT_MS = 6000;
 
-// gemini-2.5-flash-lite is a Gemini 2.5-series model, so it uses the
-// `thinkingBudget` (raw token count) field, not `thinkingLevel` — that's
-// a Gemini 3.x-only knob. thinkingBudget: 0 is a true zero budget on
-// 2.5 models (Flash-Lite actually defaults to thinking OFF already, so
-// this is mostly a belt-and-suspenders no-op here, but keeps behavior
-// explicit rather than relying on the model's current default). If
-// GEMINI_MODEL ever gets pointed back at a Gemini 3.x model, that one
-// wants thinkingLevel instead, so pick the right field for whichever
-// model is actually configured rather than hardcoding one.
+// gemini-3.5-flash-lite is a Gemini 3.x-series model, so it uses the
+// `thinkingLevel` field ('minimal' | 'low' | 'medium' | 'high'), NOT
+// `thinkingBudget` (a raw token count) — thinkingBudget is a Gemini
+// 2.5-only knob, merely accepted-but-ignored on 3.x for backwards
+// compatibility. 'minimal' is the lowest level Flash/Flash-Lite models
+// support — Gemini 3.x can't fully disable thinking, only get close to
+// it. If GEMINI_MODEL ever gets pointed at a 2.5-series model again
+// (once the "new users" restriction above lifts, say), that one wants
+// thinkingBudget instead, so pick the right field for whichever model
+// is actually configured rather than hardcoding one.
 function buildThinkingConfig(model) {
   if (/^gemini-3/.test(model)) {
-    // 'minimal' is the lowest level Flash/Flash-Lite support — Gemini 3
-    // Flash models can't fully disable thinking, only get close to it.
     return { thinkingLevel: 'minimal' };
   }
   return { thinkingBudget: 0 }; // true zero budget, supported on 2.5 Flash / Flash-Lite
@@ -49,17 +62,18 @@ function buildThinkingConfig(model) {
 // so under load it should quietly drop to fallback lines instead of
 // hammering Gemini and eating into everyone else's quota too.
 //
-// 2000ms (30 req/min) was set without checking the actual free-tier
-// ceiling — Google's documented free-tier limit for Flash models
-// (gemini-2.5-flash-lite included) is 15 RPM, and some accounts/regions
-// see as low as 5-10 RPM (https://ai.google.dev/gemini-api/docs/rate-limits).
-// At 30/min we were requesting roughly double what the tier allows
-// whenever a rally produced score events close together, which is why
-// the 429 breaker below was tripping so often. 7000ms caps us at ~8.5
-// req/min — under even the conservative end of that range, with margin
-// for TPM/RPD counting against the same quota. Override via
-// GEMINI_MIN_MS_BETWEEN_CALLS if a paid tier raises the real ceiling.
-const MIN_MS_BETWEEN_CALLS = Number(process.env.GEMINI_MIN_MS_BETWEEN_CALLS) || 7000;
+// gemini-3.5-flash-lite's actual quota on this project is 15 RPM / 500
+// RPD (see the model comment above — pulled from the AI Studio quota
+// dashboard, not a published default). 4500ms caps us at ~13.3 req/min,
+// leaving margin below the 15 RPM ceiling for TPM overlap and any
+// transient dip in the account's effective limit. 500 RPD is also a
+// real ceiling worth watching on a busy day — at max throttle rate
+// that's exhausted in under an hour of continuous play, so this isn't
+// "basically unlimited" the way the old published 1,500 RPD figure
+// suggested. Override via GEMINI_MIN_MS_BETWEEN_CALLS if GEMINI_MODEL
+// changes to something with a different quota (recheck the dashboard
+// for the model actually in use, not a blog post, before touching this).
+const MIN_MS_BETWEEN_CALLS = Number(process.env.GEMINI_MIN_MS_BETWEEN_CALLS) || 4500;
 let lastCallAt = 0;
 
 // Hard lock on top of the rate floor above. MIN_MS_BETWEEN_CALLS only
